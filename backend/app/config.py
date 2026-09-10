@@ -32,9 +32,20 @@ def _engine_options(url: str) -> dict:
     return options
 
 
+# Fallback password used only when TESTING=True and HOSTESS_PASSWORD isn't
+# set (see app/__init__.py) - shared here so tests can reference the same
+# constant instead of hardcoding it.
+DEFAULT_TEST_HOSTESS_PASSWORD = "test-only-password"
+
+
 class Config:
     SQLALCHEMY_DATABASE_URI = _normalize_db_url(
         os.environ.get("DATABASE_URL", f"sqlite:///{_DEFAULT_SQLITE_PATH}")
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = _engine_options(SQLALCHEMY_DATABASE_URI)
+
+    HOSTESS_USERNAME = os.environ.get("HOSTESS_USERNAME", "hostess")
+    # No default on purpose - create_app() refuses to start without it
+    # (outside TESTING), since these endpoints expose guest PII.
+    HOSTESS_PASSWORD = os.environ.get("HOSTESS_PASSWORD")

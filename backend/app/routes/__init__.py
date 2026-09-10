@@ -1,3 +1,6 @@
 def register_routes(app):
-    """Blueprint registration lives here; filled in as the API endpoints
-    (availability, bookings) are implemented in the next step."""
+    from .availability import bp as availability_bp
+    from .bookings import bp as bookings_bp
+
+    app.register_blueprint(availability_bp)
+    app.register_blueprint(bookings_bp)
