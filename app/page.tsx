@@ -1,69 +1,232 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useCallback, useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { apiFetch } from "@/lib/api";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { BookingForm } from "@/components/BookingForm";
+import { SlotGrid, SlotGridSkeleton, type AvailableSlot } from "@/components/SlotGrid";
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function AuthGate() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setError(null);
+    const supabase = createBrowserSupabaseClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
+    setSending(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSent(true);
+  }
+
+  if (sent) {
+    return (
+      <div className="rounded-2xl border border-line bg-surface p-8 text-center">
+        <p className="font-display text-2xl text-ink text-balance">Check your inbox</p>
+        <p className="mt-2 text-sm text-muted">
+          We sent a sign-in link to <span className="text-ink">{email}</span>. Open it on this device to continue.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-line bg-surface p-8">
+      <p className="font-display text-2xl text-ink text-balance">Sign in to reserve</p>
+      <p className="mt-2 text-sm text-muted">
+        We&apos;ll email you a one-time link — no password needed for guests.
+      </p>
+      <label className="mt-6 flex flex-col gap-1.5 text-sm">
+        <span className="font-medium text-ink">Email</span>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          type="email"
+          required
+          autoComplete="email"
+          className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
+          placeholder="jane@example.com"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </label>
+      {error && <p className="mt-3 text-sm text-status-cancelled">{error}</p>}
+      <button
+        type="submit"
+        disabled={sending}
+        className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
+      >
+        {sending ? "Sending…" : "Send sign-in link"}
+      </button>
+    </form>
+  );
+}
+
+function BookingFlow() {
+  const [date, setDate] = useState(todayIso());
+  const [partySize, setPartySize] = useState(2);
+  const [slots, setSlots] = useState<AvailableSlot[] | null>(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState<{ name: string } | null>(null);
+
+  const loadSlots = useCallback(async () => {
+    setLoadingSlots(true);
+    setSelectedSlot(null);
+    try {
+      const res = await fetch(`/api/availability?date=${date}&party_size=${partySize}`);
+      const body = await res.json();
+      setSlots(res.ok ? body : []);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [date, partySize]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount/dep-change, the canonical Effects use case
+    loadSlots();
+  }, [loadSlots]);
+
+  async function handleBook(fields: { name: string; phone: string; email: string }) {
+    if (!selectedSlot) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    const res = await apiFetch("/api/bookings", {
+      method: "POST",
+      body: JSON.stringify({
+        slot_id: selectedSlot.slot_id,
+        guest_name: fields.name,
+        guest_phone: fields.phone || null,
+        guest_email: fields.email || null,
+        party_size: partySize,
+      }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setSubmitError(
+        body.error === "validation_failed"
+          ? Object.values(body.details ?? {}).join(" ")
+          : (body.error ?? "Something went wrong - please try another time.")
+      );
+      return;
+    }
+    setConfirmed({ name: fields.name });
+  }
+
+  if (confirmed) {
+    return (
+      <div className="rounded-2xl border border-line bg-surface p-8 text-center">
+        <p className="text-xs uppercase tracking-[0.14em] text-status-confirmed">Request sent</p>
+        <p className="mt-2 font-display text-3xl text-ink text-balance">Thank you, {confirmed.name}.</p>
+        <p className="mt-2 text-sm text-muted">
+          Your table for {date} at {selectedSlot ? selectedSlot.start_time.slice(0, 5) : ""} is pending
+          confirmation. We&apos;ll be in touch shortly.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="grid grid-cols-2 gap-4">
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-ink">
+            <span className="font-mono text-xs text-muted">01</span> Date
+          </span>
+          <input
+            type="date"
+            value={date}
+            min={todayIso()}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-lg border border-line bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-ink">
+            <span className="font-mono text-xs text-muted">02</span> Party size
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={partySize}
+            onChange={(e) => setPartySize(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+            className="rounded-lg border border-line bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
+          />
+        </label>
+      </div>
+
+      <div>
+        <p className="mb-3 text-sm font-medium text-ink">
+          <span className="font-mono text-xs text-muted">03</span> Available times
+        </p>
+        {loadingSlots || slots === null ? (
+          <SlotGridSkeleton />
+        ) : (
+          <SlotGrid slots={slots} selectedSlotId={selectedSlot?.slot_id ?? null} onSelect={setSelectedSlot} />
+        )}
+      </div>
+
+      {selectedSlot && (
+        <BookingForm
+          slot={selectedSlot}
+          submitting={submitting}
+          error={submitError}
+          onSubmit={handleBook}
+          onChangeSlot={() => setSelectedSlot(null)}
+        />
+      )}
     </div>
+  );
+}
+
+export default function GuestPage() {
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12 sm:py-16">
+      <header className="mb-10">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">TableFlow</p>
+        <h1 className="mt-2 text-balance font-display text-4xl font-medium tracking-tight text-ink sm:text-5xl">
+          Reserve your table
+        </h1>
+        <p className="mt-3 text-pretty text-muted">
+          Pick a date, tell us how many, and we&apos;ll hold the table.
+        </p>
+      </header>
+
+      {session === undefined ? (
+        <div className="skeleton h-[220px] rounded-2xl border border-line" />
+      ) : session === null ? (
+        <AuthGate />
+      ) : (
+        <BookingFlow />
+      )}
+    </main>
   );
 }
