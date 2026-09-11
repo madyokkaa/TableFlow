@@ -19,7 +19,15 @@ export default function HostessLoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setSubmitting(false);
     if (error) {
-      setError(error.message);
+      // Supabase deliberately returns the same "invalid credentials" error
+      // for a wrong password and a nonexistent email (prevents an attacker
+      // from using the login form to enumerate valid staff emails) - so we
+      // show one generic message for both rather than guessing which it was.
+      setError(
+        error.message.toLowerCase().includes("invalid")
+          ? "Incorrect email or password."
+          : error.message
+      );
       return;
     }
     router.replace("/hostess");
@@ -62,6 +70,12 @@ export default function HostessLoginPage() {
         >
           {submitting ? "Signing in…" : "Sign in"}
         </button>
+        <a
+          href="/hostess/forgot-password"
+          className="text-center text-sm text-muted underline decoration-line underline-offset-4 transition-colors hover:text-claret"
+        >
+          Forgot password?
+        </a>
       </form>
     </main>
   );

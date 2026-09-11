@@ -1,145 +1,172 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { RESERVATION_STATUSES, type ReservationStatus } from "@/lib/reservations";
+import { AdminShell } from "@/components/hostess/AdminShell";
+import { Modal } from "@/components/Modal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { StatusPill } from "@/components/StatusPill";
+import type { Hall } from "@/components/hostess/HallForm";
+import type { DiningTable } from "@/components/hostess/TableForm";
+import { ReservationEditModal, type Reservation } from "@/components/hostess/ReservationEditModal";
 
-type Booking = {
-  id: number;
-  guest_name: string;
-  guest_phone: string | null;
-  guest_email: string | null;
-  party_size: number;
-  status: "pending" | "confirmed" | "cancelled" | "no-show";
-  slots: {
-    date: string;
-    start_time: string;
-    restaurant_tables: { number: number; zone: string } | null;
-  };
-};
-
-const NEXT_ACTIONS: Record<Booking["status"], { label: string; status: string; tone: "confirm" | "cancel" }[]> = {
-  pending: [
-    { label: "Confirm", status: "confirmed", tone: "confirm" },
-    { label: "Cancel", status: "cancelled", tone: "cancel" },
-  ],
-  confirmed: [
-    { label: "No-show", status: "no-show", tone: "cancel" },
-    { label: "Cancel", status: "cancelled", tone: "cancel" },
-  ],
-  cancelled: [],
-  "no-show": [],
-};
+async function parseError(res: Response): Promise<string> {
+  const body = await res.json().catch(() => ({}));
+  if (body.error === "validation_failed") {
+    return Object.values(body.details ?? {}).join(" ");
+  }
+  return body.error ?? "Something went wrong.";
+}
 
 function todayIso(): string {
-  // Local date, not UTC - a hostess east of UTC opening the dashboard just
-  // after midnight would otherwise land on yesterday's service.
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function HostessDashboard() {
-  const router = useRouter();
+function ReservationsPageContent() {
   const [date, setDate] = useState(todayIso());
-  const [bookings, setBookings] = useState<Booking[] | null>(null);
+  const [hallFilter, setHallFilter] = useState<number | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<ReservationStatus | "all">("all");
+
+  const [halls, setHalls] = useState<Hall[]>([]);
+  const [tables, setTables] = useState<DiningTable[]>([]);
+  const [reservations, setReservations] = useState<Reservation[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [pendingActionId, setPendingActionId] = useState<number | null>(null);
+
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+  const [cancellingReservation, setCancellingReservation] = useState<Reservation | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await apiFetch(`/api/bookings/by-date/${date}`);
-      if (res.status === 401) {
-        router.replace("/hostess/login");
+      const params = new URLSearchParams({ date });
+      if (hallFilter !== "all") params.set("hall_id", String(hallFilter));
+      if (statusFilter !== "all") params.set("status", statusFilter);
+
+      const [hallsRes, tablesRes, reservationsRes] = await Promise.all([
+        fetch("/api/halls"),
+        fetch("/api/tables"),
+        apiFetch(`/api/reservations?${params.toString()}`),
+      ]);
+      if (!hallsRes.ok || !tablesRes.ok || !reservationsRes.ok) {
+        setLoadError(await parseError(!reservationsRes.ok ? reservationsRes : !hallsRes.ok ? hallsRes : tablesRes));
+        setReservations([]);
         return;
       }
-      const body = await res.json();
-      if (!res.ok) {
-        setBookings([]);
-        setLoadError(body.error ?? "Couldn't load bookings for this date.");
-        return;
-      }
-      setBookings(body);
+      setHalls(await hallsRes.json());
+      setTables(await tablesRes.json());
+      setReservations(await reservationsRes.json());
     } catch {
-      setBookings([]);
       setLoadError("Couldn't reach the server. Check your connection and try again.");
+      setReservations([]);
     } finally {
       setLoading(false);
     }
-  }, [date, router]);
+  }, [date, hallFilter, statusFilter]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount/dep-change, the canonical Effects use case
     load();
   }, [load]);
 
-  async function handleAction(bookingId: number, newStatus: string) {
-    setPendingActionId(bookingId);
-    setActionError(null);
-    try {
-      const res = await apiFetch(`/api/bookings/${bookingId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setActionError(body.error ?? "Couldn't update that booking.");
-        return;
-      }
-      await load();
-    } catch {
-      setActionError("Couldn't reach the server. Check your connection and try again.");
-    } finally {
-      setPendingActionId(null);
+  async function handleEdit(fields: {
+    date: string;
+    start_time: string;
+    duration_minutes: number;
+    party_size: number;
+    guest_name: string;
+    guest_phone: string;
+    guest_email: string;
+    status: ReservationStatus;
+    table_ids: number[];
+  }) {
+    if (!editingReservation) return;
+    setSubmitting(true);
+    setFormError(null);
+    const res = await apiFetch(`/api/reservations/${editingReservation.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        ...fields,
+        guest_phone: fields.guest_phone || null,
+        guest_email: fields.guest_email || null,
+      }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      setFormError(await parseError(res));
+      return;
     }
+    setEditingReservation(null);
+    load();
   }
 
-  async function handleSignOut() {
-    const supabase = createBrowserSupabaseClient();
-    await supabase.auth.signOut();
-    router.replace("/hostess/login");
+  async function handleCancel() {
+    if (!cancellingReservation) return;
+    const res = await apiFetch(`/api/reservations/${cancellingReservation.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "cancelled" }),
+    });
+    if (!res.ok) {
+      throw new Error(await parseError(res));
+    }
+    load();
   }
-
-  const sorted = bookings
-    ? [...bookings].sort((a, b) => a.slots.start_time.localeCompare(b.slots.start_time))
-    : [];
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-10">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">TableFlow · Staff</p>
-          <h1 className="mt-1 font-display text-3xl text-ink text-balance">Today&apos;s bookings</h1>
-        </div>
-        <div className="flex items-center gap-3">
+    <>
+      <div className="mb-6">
+        <p className="text-xs uppercase tracking-[0.14em] text-muted">Front of house</p>
+        <h1 className="mt-1 font-display text-3xl text-ink text-balance">Reservations</h1>
+      </div>
+
+      <div className="mb-6 flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-ink">Date</span>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-claret"
           />
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="text-sm text-muted underline decoration-line underline-offset-4 transition-colors hover:text-ink"
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-ink">Hall</span>
+          <select
+            value={hallFilter}
+            onChange={(e) => setHallFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-claret"
           >
-            Sign out
-          </button>
-        </div>
-      </header>
+            <option value="all">All halls</option>
+            {halls.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-ink">Status</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ReservationStatus | "all")}
+            className="rounded-lg border border-line bg-surface px-3 py-2 text-sm capitalize text-ink outline-none transition-colors focus:border-claret"
+          >
+            <option value="all">All statuses</option>
+            {RESERVATION_STATUSES.map((s) => (
+              <option key={s} value={s} className="capitalize">
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
-      {actionError && (
-        <p className="mb-4 rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">
-          {actionError}
-        </p>
-      )}
-
-      {loading || bookings === null ? (
+      {loading || reservations === null ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="skeleton h-16 rounded-xl border border-line" />
@@ -149,50 +176,90 @@ export default function HostessDashboard() {
         <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-8 text-center text-sm text-status-cancelled">
           {loadError}
         </p>
-      ) : sorted.length === 0 ? (
+      ) : reservations.length === 0 ? (
         <p className="rounded-xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
-          No bookings for this date.
+          No reservations match these filters.
         </p>
       ) : (
         <div className="flex flex-col divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-          {sorted.map((booking) => (
-            <div key={booking.id} className="flex flex-wrap items-center gap-4 px-4 py-3">
-              <div className="w-16 shrink-0 font-mono text-sm font-medium tabular-nums text-ink">
-                {booking.slots.start_time.slice(0, 5)}
-              </div>
-              <div className="w-28 shrink-0 text-sm text-muted">
-                {booking.slots.restaurant_tables
-                  ? `T${booking.slots.restaurant_tables.number} · ${booking.slots.restaurant_tables.zone}`
-                  : "—"}
-              </div>
-              <div className="min-w-[140px] flex-1">
-                <p className="text-sm font-medium text-ink">
-                  {booking.guest_name} <span className="text-muted">· {booking.party_size}p</span>
-                </p>
-                <p className="text-xs text-muted">{booking.guest_phone || booking.guest_email}</p>
-              </div>
-              <StatusPill status={booking.status} />
-              <div className="flex shrink-0 gap-2">
-                {NEXT_ACTIONS[booking.status].map((action) => (
-                  <button
-                    key={action.status}
-                    type="button"
-                    disabled={pendingActionId === booking.id}
-                    onClick={() => handleAction(booking.id, action.status)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
-                      action.tone === "confirm"
-                        ? "border-status-confirmed text-status-confirmed hover:bg-status-confirmed-tint"
-                        : "border-status-cancelled text-status-cancelled hover:bg-status-cancelled-tint"
-                    }`}
-                  >
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+          {[...reservations]
+            .sort((a, b) => a.start_time.localeCompare(b.start_time))
+            .map((reservation) => {
+              const tableLabels = reservation.reservation_tables
+                .map((rt) => `${rt.dining_tables.halls.name} · ${rt.dining_tables.label}`)
+                .join(", ");
+              const canCancel = ["pending", "confirmed"].includes(reservation.status);
+              return (
+                <div key={reservation.id} className="flex flex-wrap items-center gap-4 px-4 py-3">
+                  <div className="w-16 shrink-0 font-mono text-sm font-medium tabular-nums text-ink">
+                    {reservation.start_time.slice(0, 5)}
+                  </div>
+                  <div className="w-40 shrink-0 text-sm text-muted">{tableLabels || "—"}</div>
+                  <div className="min-w-[140px] flex-1">
+                    <p className="text-sm font-medium text-ink">
+                      {reservation.guest_name} <span className="text-muted">· {reservation.party_size}p</span>
+                    </p>
+                    <p className="text-xs text-muted">{reservation.guest_phone || reservation.guest_email}</p>
+                  </div>
+                  <StatusPill status={reservation.status} />
+                  <div className="flex shrink-0 gap-3 text-sm">
+                    <button
+                      type="button"
+                      onClick={() => setEditingReservation(reservation)}
+                      className="text-claret underline decoration-claret/40 underline-offset-4 hover:text-claret-strong"
+                    >
+                      Edit
+                    </button>
+                    {canCancel && (
+                      <button
+                        type="button"
+                        onClick={() => setCancellingReservation(reservation)}
+                        className="text-status-cancelled underline decoration-status-cancelled/40 underline-offset-4 hover:brightness-90"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
         </div>
       )}
-    </main>
+
+      <Modal
+        open={editingReservation !== null}
+        onClose={() => setEditingReservation(null)}
+        title={`Edit reservation — ${editingReservation?.guest_name ?? ""}`}
+      >
+        {editingReservation && (
+          <ReservationEditModal
+            reservation={editingReservation}
+            halls={halls}
+            tables={tables}
+            submitting={submitting}
+            error={formError}
+            onSubmit={handleEdit}
+          />
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={cancellingReservation !== null}
+        onClose={() => setCancellingReservation(null)}
+        onConfirm={handleCancel}
+        title="Cancel reservation"
+        message={`Cancel the reservation for "${cancellingReservation?.guest_name}"? The table will be freed up for new bookings.`}
+        confirmLabel="Cancel reservation"
+        danger
+      />
+    </>
+  );
+}
+
+export default function HostessDashboard() {
+  return (
+    <AdminShell>
+      <ReservationsPageContent />
+    </AdminShell>
   );
 }
