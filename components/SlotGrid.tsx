@@ -1,8 +1,8 @@
 export type AvailableSlot = {
-  slot_id: number;
   table_id: number;
-  table_number: number;
-  zone: string;
+  hall_id: number;
+  hall_name: string | null;
+  table_label: string;
   capacity: number;
   date: string;
   start_time: string;
@@ -11,6 +11,10 @@ export type AvailableSlot = {
 
 function formatTime(time: string): string {
   return time.slice(0, 5);
+}
+
+export function slotKey(slot: AvailableSlot): string {
+  return `${slot.table_id}_${slot.start_time}`;
 }
 
 export function SlotGridSkeleton() {
@@ -25,11 +29,11 @@ export function SlotGridSkeleton() {
 
 export function SlotGrid({
   slots,
-  selectedSlotId,
+  selectedSlotKey,
   onSelect,
 }: {
   slots: AvailableSlot[];
-  selectedSlotId: number | null;
+  selectedSlotKey: string | null;
   onSelect: (slot: AvailableSlot) => void;
 }) {
   if (slots.length === 0) {
@@ -43,10 +47,11 @@ export function SlotGrid({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Available times">
       {slots.map((slot) => {
-        const selected = slot.slot_id === selectedSlotId;
+        const key = slotKey(slot);
+        const selected = key === selectedSlotKey;
         return (
           <button
-            key={slot.slot_id}
+            key={key}
             type="button"
             aria-pressed={selected}
             onClick={() => onSelect(slot)}
@@ -58,7 +63,7 @@ export function SlotGrid({
           >
             <span className="font-mono text-base font-medium tabular-nums">{formatTime(slot.start_time)}</span>
             <span className={`text-xs ${selected ? "text-white/80" : "text-muted"}`}>
-              Table {slot.table_number} · {slot.zone} · seats {slot.capacity}
+              {slot.hall_name ?? "Hall"} · Table {slot.table_label} · seats {slot.capacity}
             </span>
           </button>
         );

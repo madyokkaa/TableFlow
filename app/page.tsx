@@ -5,7 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import { apiFetch } from "@/lib/api";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { BookingForm } from "@/components/BookingForm";
-import { SlotGrid, SlotGridSkeleton, type AvailableSlot } from "@/components/SlotGrid";
+import { SlotGrid, SlotGridSkeleton, slotKey, type AvailableSlot } from "@/components/SlotGrid";
 
 function todayIso(): string {
   // Local date, not UTC - new Date().toISOString() would put a guest west
@@ -132,10 +132,12 @@ function BookingFlow() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await apiFetch("/api/bookings", {
+      const res = await apiFetch("/api/reservations", {
         method: "POST",
         body: JSON.stringify({
-          slot_id: selectedSlot.slot_id,
+          table_id: selectedSlot.table_id,
+          date: selectedSlot.date,
+          start_time: selectedSlot.start_time,
           guest_name: fields.name,
           guest_phone: fields.phone || null,
           guest_email: fields.email || null,
@@ -218,7 +220,7 @@ function BookingFlow() {
             {slotsError}
           </p>
         ) : (
-          <SlotGrid slots={slots} selectedSlotId={selectedSlot?.slot_id ?? null} onSelect={setSelectedSlot} />
+          <SlotGrid slots={slots} selectedSlotKey={selectedSlot ? slotKey(selectedSlot) : null} onSelect={setSelectedSlot} />
         )}
       </div>
 

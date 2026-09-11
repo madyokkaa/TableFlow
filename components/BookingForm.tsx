@@ -46,7 +46,7 @@ export function BookingForm({
           <p className="text-xs uppercase tracking-[0.14em] text-muted">Your table</p>
           <p className="mt-1 font-mono text-lg font-medium tabular-nums">{formatTime(slot.start_time)}</p>
           <p className="text-sm text-muted">
-            Table {slot.table_number} · {slot.zone} · seats {slot.capacity}
+            {slot.hall_name ?? "Hall"} · Table {slot.table_label} · seats {slot.capacity}
           </p>
         </div>
         <button

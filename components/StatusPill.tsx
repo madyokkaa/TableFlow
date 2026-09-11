@@ -3,6 +3,7 @@ const STYLES: Record<string, string> = {
   confirmed: "bg-status-confirmed-tint text-status-confirmed",
   cancelled: "bg-status-cancelled-tint text-status-cancelled",
   "no-show": "bg-status-noshow-tint text-status-noshow",
+  completed: "bg-line text-muted",
 };
 
 const LABELS: Record<string, string> = {
@@ -10,6 +11,7 @@ const LABELS: Record<string, string> = {
   confirmed: "Confirmed",
   cancelled: "Cancelled",
   "no-show": "No-show",
+  completed: "Completed",
 };
 
 export function StatusPill({ status }: { status: string }) {
