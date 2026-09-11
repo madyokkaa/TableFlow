@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+/*
+  TableFlow design tokens.
+  Direction: a well-run dining room's reservation book, digitized - warm ink
+  and paper tones, one confident wine-red accent (not a SaaS blue/purple), a
+  serif display face for warmth paired with a precise sans/mono for the
+  operational (hostess) side. Respects the OS light/dark preference.
+*/
+:root {
+  --color-paper: #f7f3ec;
+  --color-surface: #ffffff;
+  --color-ink: #1c1712;
+  --color-muted: #756b5e;
+  --color-line: #e3dacb;
+
+  --color-claret: #6e2a3a;
+  --color-claret-strong: #551f2c;
+  --color-claret-tint: #f3e4e6;
+
+  --color-status-pending: #a6791f;
+  --color-status-pending-tint: #f6ecd7;
+  --color-status-confirmed: #3f6b52;
+  --color-status-confirmed-tint: #e3ede6;
+  --color-status-cancelled: #a14a3d;
+  --color-status-cancelled-tint: #f5e5e2;
+  --color-status-noshow: #6b7280;
+  --color-status-noshow-tint: #e9eaec;
+
+  --shadow-color: 28 23 18;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #17130f;
+    --color-surface: #221c16;
+    --color-ink: #f3ece1;
+    --color-muted: #a79c8c;
+    --color-line: #342c24;
+
+    --color-claret: #d98a96;
+    --color-claret-strong: #eaacb5;
+    --color-claret-tint: #3a2126;
+
+    --color-status-pending: #d9a94a;
+    --color-status-pending-tint: #332912;
+    --color-status-confirmed: #7fb494;
+    --color-status-confirmed-tint: #1c2a21;
+    --color-status-cancelled: #e2988c;
+    --color-status-cancelled-tint: #33211d;
+    --color-status-noshow: #a9b0b8;
+    --color-status-noshow-tint: #242629;
+
+    --shadow-color: 0 0 0;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-line: var(--color-line);
+  --color-claret: var(--color-claret);
+  --color-claret-strong: var(--color-claret-strong);
+  --color-claret-tint: var(--color-claret-tint);
+  --color-status-pending: var(--color-status-pending);
+  --color-status-pending-tint: var(--color-status-pending-tint);
+  --color-status-confirmed: var(--color-status-confirmed);
+  --color-status-confirmed-tint: var(--color-status-confirmed-tint);
+  --color-status-cancelled: var(--color-status-cancelled);
+  --color-status-cancelled-tint: var(--color-status-cancelled-tint);
+  --color-status-noshow: var(--color-status-noshow);
+  --color-status-noshow-tint: var(--color-status-noshow-tint);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes form-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-line) 30%,
+    color-mix(in srgb, var(--color-line) 50%, var(--color-surface)) 45%,
+    var(--color-line) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
