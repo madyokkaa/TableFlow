@@ -34,7 +34,10 @@ const NEXT_ACTIONS: Record<Booking["status"], { label: string; status: string; t
 };
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Local date, not UTC - a hostess east of UTC opening the dashboard just
+  // after midnight would otherwise land on yesterday's service.
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export default function HostessDashboard() {
@@ -43,18 +46,31 @@ export default function HostessDashboard() {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pendingActionId, setPendingActionId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await apiFetch(`/api/bookings/by-date/${date}`);
-    if (res.status === 401) {
-      router.replace("/hostess/login");
-      return;
+    setLoadError(null);
+    try {
+      const res = await apiFetch(`/api/bookings/by-date/${date}`);
+      if (res.status === 401) {
+        router.replace("/hostess/login");
+        return;
+      }
+      const body = await res.json();
+      if (!res.ok) {
+        setBookings([]);
+        setLoadError(body.error ?? "Couldn't load bookings for this date.");
+        return;
+      }
+      setBookings(body);
+    } catch {
+      setBookings([]);
+      setLoadError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-    const body = await res.json();
-    setBookings(res.ok ? body : []);
-    setLoading(false);
   }, [date, router]);
 
   useEffect(() => {
@@ -65,17 +81,22 @@ export default function HostessDashboard() {
   async function handleAction(bookingId: number, newStatus: string) {
     setPendingActionId(bookingId);
     setActionError(null);
-    const res = await apiFetch(`/api/bookings/${bookingId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: newStatus }),
-    });
-    setPendingActionId(null);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setActionError(body.error ?? "Couldn't update that booking.");
-      return;
+    try {
+      const res = await apiFetch(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setActionError(body.error ?? "Couldn't update that booking.");
+        return;
+      }
+      await load();
+    } catch {
+      setActionError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setPendingActionId(null);
     }
-    load();
   }
 
   async function handleSignOut() {
@@ -124,6 +145,10 @@ export default function HostessDashboard() {
             <div key={i} className="skeleton h-16 rounded-xl border border-line" />
           ))}
         </div>
+      ) : loadError ? (
+        <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-8 text-center text-sm text-status-cancelled">
+          {loadError}
+        </p>
       ) : sorted.length === 0 ? (
         <p className="rounded-xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
           No bookings for this date.

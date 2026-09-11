@@ -41,15 +41,14 @@ export function SlotGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Available times">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Available times">
       {slots.map((slot) => {
         const selected = slot.slot_id === selectedSlotId;
         return (
           <button
             key={slot.slot_id}
             type="button"
-            role="radio"
-            aria-checked={selected}
+            aria-pressed={selected}
             onClick={() => onSelect(slot)}
             className={`group flex flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition-[transform,border-color,background-color,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-[0_6px_16px_-8px_rgb(var(--shadow-color)/0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-claret ${
               selected

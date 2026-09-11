@@ -36,7 +36,7 @@ export function BookingForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="animate-in flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6"
+      className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6"
       style={{
         animation: "form-enter 260ms ease-out",
       }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { apiFetch } from "@/lib/api";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -8,7 +8,17 @@ import { BookingForm } from "@/components/BookingForm";
 import { SlotGrid, SlotGridSkeleton, type AvailableSlot } from "@/components/SlotGrid";
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Local date, not UTC - new Date().toISOString() would put a guest west
+  // of UTC into "tomorrow" every evening and block booking tonight.
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatDetails(details: Record<string, string> | undefined): string {
+  if (!details) return "Please check your details and try again.";
+  return Object.entries(details)
+    .map(([field, message]) => `${field.replace("_", " ")}: ${message}`)
+    .join(" ");
 }
 
 function AuthGate() {
@@ -80,20 +90,35 @@ function BookingFlow() {
   const [partySize, setPartySize] = useState(2);
   const [slots, setSlots] = useState<AvailableSlot[] | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<{ name: string } | null>(null);
+  const [confirmed, setConfirmed] = useState<{ name: string; date: string; time: string } | null>(null);
+
+  const requestIdRef = useRef(0);
 
   const loadSlots = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoadingSlots(true);
+    setSlotsError(null);
     setSelectedSlot(null);
     try {
       const res = await fetch(`/api/availability?date=${date}&party_size=${partySize}`);
+      if (requestId !== requestIdRef.current) return; // a newer request superseded this one
       const body = await res.json();
-      setSlots(res.ok ? body : []);
+      if (!res.ok) {
+        setSlots([]);
+        setSlotsError(body.error ?? "Couldn't load available times.");
+        return;
+      }
+      setSlots(body);
+    } catch {
+      if (requestId !== requestIdRef.current) return;
+      setSlots([]);
+      setSlotsError("Couldn't reach the server. Check your connection and try again.");
     } finally {
-      setLoadingSlots(false);
+      if (requestId === requestIdRef.current) setLoadingSlots(false);
     }
   }, [date, partySize]);
 
@@ -106,27 +131,30 @@ function BookingFlow() {
     if (!selectedSlot) return;
     setSubmitting(true);
     setSubmitError(null);
-    const res = await apiFetch("/api/bookings", {
-      method: "POST",
-      body: JSON.stringify({
-        slot_id: selectedSlot.slot_id,
-        guest_name: fields.name,
-        guest_phone: fields.phone || null,
-        guest_email: fields.email || null,
-        party_size: partySize,
-      }),
-    });
-    setSubmitting(false);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setSubmitError(
-        body.error === "validation_failed"
-          ? Object.values(body.details ?? {}).join(" ")
-          : (body.error ?? "Something went wrong - please try another time.")
-      );
-      return;
+    try {
+      const res = await apiFetch("/api/bookings", {
+        method: "POST",
+        body: JSON.stringify({
+          slot_id: selectedSlot.slot_id,
+          guest_name: fields.name,
+          guest_phone: fields.phone || null,
+          guest_email: fields.email || null,
+          party_size: partySize,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSubmitError(
+          body.error === "validation_failed" ? formatDetails(body.details) : (body.error ?? "Something went wrong - please try another time.")
+        );
+        return;
+      }
+      setConfirmed({ name: fields.name, date, time: selectedSlot.start_time });
+    } catch {
+      setSubmitError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setSubmitting(false);
     }
-    setConfirmed({ name: fields.name });
   }
 
   if (confirmed) {
@@ -135,9 +163,16 @@ function BookingFlow() {
         <p className="text-xs uppercase tracking-[0.14em] text-status-confirmed">Request sent</p>
         <p className="mt-2 font-display text-3xl text-ink text-balance">Thank you, {confirmed.name}.</p>
         <p className="mt-2 text-sm text-muted">
-          Your table for {date} at {selectedSlot ? selectedSlot.start_time.slice(0, 5) : ""} is pending
-          confirmation. We&apos;ll be in touch shortly.
+          Your table for {confirmed.date} at {confirmed.time.slice(0, 5)} is pending confirmation. We&apos;ll be
+          in touch shortly.
         </p>
+        <button
+          type="button"
+          onClick={() => setConfirmed(null)}
+          className="mt-5 text-sm text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
+        >
+          Book another table
+        </button>
       </div>
     );
   }
@@ -178,6 +213,10 @@ function BookingFlow() {
         </p>
         {loadingSlots || slots === null ? (
           <SlotGridSkeleton />
+        ) : slotsError ? (
+          <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-3 text-sm text-status-cancelled">
+            {slotsError}
+          </p>
         ) : (
           <SlotGrid slots={slots} selectedSlotId={selectedSlot?.slot_id ?? null} onSelect={setSelectedSlot} />
         )}
