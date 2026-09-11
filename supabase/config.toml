@@ -159,12 +159,17 @@ site_url = "https://www.tableflow.asia"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+#
+# Only the exact callback path the app ever requests - no bare-origin entries.
+# A bare origin (e.g. "https://www.tableflow.asia" with no path) would let the
+# auth code/token land on ANY page of the site, which is a real
+# open-redirect/token-exfiltration risk if any other page ever does a
+# client-side redirect off a query param. The app only ever passes
+# emailRedirectTo=`${origin}/auth/callback` (app/page.tsx), so that's all
+# that needs to be allowed.
 additional_redirect_urls = [
-  "https://www.tableflow.asia",
   "https://www.tableflow.asia/auth/callback",
-  "https://tableflow.asia",
   "https://tableflow.asia/auth/callback",
-  "http://localhost:3000",
   "http://localhost:3000/auth/callback",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
