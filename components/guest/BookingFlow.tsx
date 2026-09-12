@@ -1,19 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
+import type { Session } from "@supabase/supabase-js";
 import { apiFetch, parseError } from "@/lib/api";
-import { candidateStartTimes, restaurantTodayIso } from "@/lib/scheduling";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { candidateStartTimes, maxAdvanceBookingDateIso, restaurantTodayIso } from "@/lib/scheduling";
 import { formatDateShort, formatTime, guestsLabel } from "@/lib/ru";
 import { GuestFloorPlan } from "./GuestFloorPlan";
 import { DatePicker } from "./DatePicker";
 import { TimeSlider } from "./TimeSlider";
 import { ConfirmStep } from "./ConfirmStep";
+import { SuccessCelebration } from "./SuccessCelebration";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
 
 const STEP_LABELS = ["Стол", "Дата", "Время", "Подтверждение"];
 
-export function BookingFlow() {
+export function BookingFlow({ session }: { session: Session | null }) {
   const [step, setStep] = useState(0);
   const [partySize, setPartySize] = useState(2);
 
@@ -36,7 +40,9 @@ export function BookingFlow() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<{ name: string; date: string; time: string } | null>(null);
+  const [confirmed, setConfirmed] = useState<{ name: string; email: string; date: string; time: string } | null>(
+    null
+  );
 
   const loadFloorPlan = useCallback(async () => {
     setLoading(true);
@@ -127,7 +133,14 @@ export function BookingFlow() {
         setSubmitError(await parseError(res));
         return;
       }
-      setConfirmed({ name: fields.name, date, time: selectedTime });
+      // Best-effort - remembers name/phone for next time. Never blocks or
+      // fails the booking itself if it doesn't go through.
+      if (session) {
+        createBrowserSupabaseClient()
+          .auth.updateUser({ data: { full_name: fields.name, phone: fields.phone || null } })
+          .catch(() => {});
+      }
+      setConfirmed({ name: fields.name, email: fields.email, date, time: selectedTime });
     } catch {
       setSubmitError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
     } finally {
@@ -137,16 +150,36 @@ export function BookingFlow() {
 
   if (confirmed) {
     return (
-      <div
-        className="rounded-2xl border border-line bg-surface p-8 text-center"
-        style={{ animation: "form-enter 220ms ease-out" }}
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 220, damping: 22 }}
+        className="rounded-2xl border border-line bg-surface p-8 text-center shadow-[var(--shadow-elevated)]"
       >
-        <p className="text-xs uppercase tracking-[0.14em] text-status-confirmed">Заявка отправлена</p>
+        <SuccessCelebration />
+        <p className="mt-4 text-xs uppercase tracking-[0.14em] text-status-confirmed">Заявка отправлена</p>
         <p className="mt-2 font-display text-3xl text-ink text-balance">Спасибо, {confirmed.name}!</p>
         <p className="mt-2 text-sm text-muted">
           Столик на {formatDateShort(confirmed.date)} в {formatTime(confirmed.time)} ожидает подтверждения. Мы скоро с
           вами свяжемся.
         </p>
+
+        {!session && (
+          <div className="mt-6 rounded-xl border border-gold/30 bg-gold-tint px-4 py-3 text-left">
+            <p className="text-sm font-medium text-ink">Сохранить эти данные?</p>
+            <p className="mt-1 text-xs text-muted">
+              Создайте аккаунт — в следующий раз не нужно будет вводить их заново. (Эта бронь уже отправлена как
+              гостевая и останется у вас в брони по email/телефону.)
+            </p>
+            <a
+              href={`/account/register${confirmed.email ? `?email=${encodeURIComponent(confirmed.email)}` : ""}`}
+              className="mt-2 inline-block text-sm text-claret underline decoration-claret/40 underline-offset-4 hover:text-claret-strong"
+            >
+              Создать аккаунт →
+            </a>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={() => {
@@ -159,7 +192,7 @@ export function BookingFlow() {
         >
           Забронировать ещё
         </button>
-      </div>
+      </motion.div>
     );
   }
 
@@ -194,23 +227,27 @@ export function BookingFlow() {
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted">Гостей</span>
           <span className="flex items-center gap-1">
-            <button
+            <motion.button
               type="button"
+              whileTap={{ scale: 0.88 }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
               onClick={() => setPartySize((p) => Math.max(1, p - 1))}
               aria-label="Меньше гостей"
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink transition-colors hover:border-claret"
             >
               −
-            </button>
+            </motion.button>
             <span className="w-6 text-center font-mono tabular-nums text-ink">{partySize}</span>
-            <button
+            <motion.button
               type="button"
+              whileTap={{ scale: 0.88 }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
               onClick={() => setPartySize((p) => Math.min(20, p + 1))}
               aria-label="Больше гостей"
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink transition-colors hover:border-claret"
             >
               +
-            </button>
+            </motion.button>
           </span>
         </label>
       </div>
@@ -232,7 +269,12 @@ export function BookingFlow() {
           <div className="flex flex-col gap-4">
             <p className="font-display text-2xl text-ink text-balance">Выберите дату</p>
             <div className="max-w-xs">
-              <DatePicker value={date} minDate={restaurantTodayIso()} onChange={setDate} />
+              <DatePicker
+                value={date}
+                minDate={restaurantTodayIso()}
+                maxDate={maxAdvanceBookingDateIso()}
+                onChange={setDate}
+              />
             </div>
           </div>
         )}
@@ -264,6 +306,9 @@ export function BookingFlow() {
             submitting={submitting}
             error={submitError}
             onSubmit={handleConfirm}
+            defaultName={(session?.user.user_metadata?.full_name as string | undefined) ?? ""}
+            defaultPhone={(session?.user.user_metadata?.phone as string | undefined) ?? ""}
+            defaultEmail={session?.user.email ?? ""}
           />
         )}
       </div>
@@ -281,14 +326,17 @@ export function BookingFlow() {
           ) : (
             <span />
           )}
-          <button
+          <motion.button
             type="button"
+            whileHover={canGoNext ? { scale: 1.03 } : undefined}
+            whileTap={canGoNext ? { scale: 0.96 } : undefined}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => setStep((s) => Math.min(3, s + 1))}
             disabled={!canGoNext}
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-6 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-6 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-claret-strong disabled:cursor-not-allowed disabled:opacity-50"
           >
             Далее →
-          </button>
+          </motion.button>
         </div>
       )}
 

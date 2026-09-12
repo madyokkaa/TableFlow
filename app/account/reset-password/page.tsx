@@ -3,15 +3,17 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { AuthCard } from "@/components/guest/AuthCard";
 
-export default function ResetPasswordPage() {
+export default function GuestResetPasswordPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   // Whether the recovery link failed, for any reason - never the raw
   // `error_description` query param GoTrue appends to the redirect, which
   // would let anyone craft a link putting arbitrary text on this
   // TableFlow-branded page (a ready-made phishing surface, since this exact
-  // URL is what real password-reset emails send).
+  // URL is what real password-reset emails send). One fixed message covers
+  // every failure case; nothing actionable is lost by not echoing GoTrue's.
   const [linkFailed, setLinkFailed] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -82,51 +84,44 @@ export default function ResetPasswordPage() {
 
   if (done) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
-        <div className="rounded-2xl border border-line bg-surface p-8 text-center">
-          <p className="font-display text-2xl text-ink text-balance">Пароль обновлён</p>
-          <p className="mt-2 text-sm text-muted">Теперь вы можете войти с новым паролем.</p>
-          <button
-            type="button"
-            onClick={() => router.replace("/hostess/login")}
-            className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
-          >
-            Перейти ко входу
-          </button>
-        </div>
-      </main>
+      <AuthCard title="Пароль обновлён">
+        <p className="text-sm text-muted">Теперь вы можете войти с новым паролем.</p>
+        <button
+          type="button"
+          onClick={() => router.replace("/account/login")}
+          className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
+        >
+          Перейти ко входу
+        </button>
+      </AuthCard>
     );
   }
 
   if (linkFailed) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16 text-center">
-        <p className="font-display text-2xl text-ink">Ссылка не сработала</p>
-        <p className="mt-2 text-sm text-status-cancelled">Эта ссылка истекла или уже была использована. Запросите новую.</p>
+      <AuthCard title="Ссылка не сработала">
+        <p className="text-sm text-status-cancelled">Эта ссылка истекла или уже была использована. Запросите новую.</p>
         <a
-          href="/hostess/forgot-password"
+          href="/account/forgot-password"
           className="mt-5 inline-block text-sm text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
         >
           Запросить новую ссылку
         </a>
-      </main>
+      </AuthCard>
     );
   }
 
   if (!ready) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 text-center">
-        <p className="text-sm text-muted">Проверяем ссылку…</p>
-      </main>
+      <AuthCard title="Проверяем ссылку…">
+        <p className="text-sm text-muted">Секунду…</p>
+      </AuthCard>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">TableFlow · Staff</p>
-      <h1 className="mt-2 font-display text-3xl text-ink text-balance">Новый пароль</h1>
-
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
+    <AuthCard title="Новый пароль">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-ink">Новый пароль</span>
           <input
@@ -155,11 +150,11 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
+          className="mt-1 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
         >
           {submitting ? "Сохраняем…" : "Сохранить пароль"}
         </button>
       </form>
-    </main>
+    </AuthCard>
   );
 }

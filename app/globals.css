@@ -6,6 +6,10 @@
   and paper tones, one confident wine-red accent (not a SaaS blue/purple), a
   serif display face for warmth paired with a precise sans/mono for the
   operational (hostess) side. Respects the OS light/dark preference.
+
+  Gold is a second, deliberately rare accent - reserved for celebratory
+  moments (booking success, badges) so it reads as a highlight, not part of
+  the everyday palette claret already covers.
 */
 :root {
   --color-paper: #f7f3ec;
@@ -18,6 +22,10 @@
   --color-claret-strong: #551f2c;
   --color-claret-tint: #f3e4e6;
 
+  --color-gold: #b8863a;
+  --color-gold-strong: #96692a;
+  --color-gold-tint: #f8ecd7;
+
   --color-status-pending: #a6791f;
   --color-status-pending-tint: #f6ecd7;
   --color-status-confirmed: #3f6b52;
@@ -28,6 +36,13 @@
   --color-status-noshow-tint: #e9eaec;
 
   --shadow-color: 28 23 18;
+  --shadow-soft: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 1px 1px rgb(var(--shadow-color) / 0.04);
+  --shadow-elevated: 0 6px 16px -4px rgb(var(--shadow-color) / 0.14), 0 2px 6px -2px rgb(var(--shadow-color) / 0.08);
+  --shadow-floating: 0 20px 48px -12px rgb(var(--shadow-color) / 0.24), 0 8px 20px -8px rgb(var(--shadow-color) / 0.14);
+
+  /* A slight overshoot - used for tactile press/pop moments (motion's
+     spring type covers the rest), not for anything that scrolls text. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -41,6 +56,10 @@
     --color-claret: #d98a96;
     --color-claret-strong: #eaacb5;
     --color-claret-tint: #3a2126;
+
+    --color-gold: #e0b872;
+    --color-gold-strong: #f0cf98;
+    --color-gold-tint: #3a2f16;
 
     --color-status-pending: #d9a94a;
     --color-status-pending-tint: #332912;
@@ -64,6 +83,9 @@
   --color-claret: var(--color-claret);
   --color-claret-strong: var(--color-claret-strong);
   --color-claret-tint: var(--color-claret-tint);
+  --color-gold: var(--color-gold);
+  --color-gold-strong: var(--color-gold-strong);
+  --color-gold-tint: var(--color-gold-tint);
   --color-status-pending: var(--color-status-pending);
   --color-status-pending-tint: var(--color-status-pending-tint);
   --color-status-confirmed: var(--color-status-confirmed);
@@ -72,6 +94,10 @@
   --color-status-cancelled-tint: var(--color-status-cancelled-tint);
   --color-status-noshow: var(--color-status-noshow);
   --color-status-noshow-tint: var(--color-status-noshow-tint);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-elevated: var(--shadow-elevated);
+  --shadow-floating: var(--shadow-floating);
 
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-plex-sans);

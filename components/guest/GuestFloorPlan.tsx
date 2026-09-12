@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion } from "motion/react";
 import { SHAPE_SIZE } from "@/lib/tableShapes";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
@@ -72,12 +73,15 @@ export function GuestFloorPlan({
             const tooSmall = table.max_capacity < partySize;
             const selected = table.id === selectedTableId;
             return (
-              <button
+              <motion.button
                 key={table.id}
                 type="button"
                 disabled={tooSmall}
                 aria-pressed={selected}
                 onClick={() => onSelectTable(table)}
+                whileHover={tooSmall ? undefined : { scale: 1.06 }}
+                whileTap={tooSmall ? undefined : { scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 380, damping: 18 }}
                 className={`absolute flex touch-none flex-col items-center justify-center border-2 text-center transition-[background-color,border-color,box-shadow,opacity] duration-200 ${size.className} ${
                   selected
                     ? "border-claret bg-claret text-white shadow-lg"
@@ -92,7 +96,7 @@ export function GuestFloorPlan({
                 <span className={`text-[10px] tabular-nums ${selected ? "text-white/80" : "opacity-70"}`}>
                   {table.min_capacity}–{table.max_capacity} мест
                 </span>
-              </button>
+              </motion.button>
             );
           })}
         </div>

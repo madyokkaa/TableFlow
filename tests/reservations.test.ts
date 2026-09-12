@@ -5,6 +5,7 @@ import { GET as getAvailability } from "../app/api/availability/route";
 import { POST as createReservation } from "../app/api/reservations/route";
 import { GET as listReservations } from "../app/api/reservations/route";
 import { PATCH as patchReservation } from "../app/api/reservations/[id]/route";
+import { POST as cancelReservation } from "../app/api/reservations/[id]/cancel/route";
 import { POST as createHall } from "../app/api/halls/route";
 import { POST as createTable } from "../app/api/tables/route";
 
@@ -222,5 +223,142 @@ describe("halls/tables/reservations API", () => {
 
     const { data: stillPending } = await admin.from("reservations").select("status").eq("id", reservation.id).single();
     expect(stillPending?.status).toBe("pending");
+  });
+
+  it("an anonymous (unauthenticated) guest can still create a reservation", async () => {
+    const createRes = await createReservation(
+      jsonRequest("/api/reservations", "POST", null, {
+        table_id: tableAId,
+        date: dateStr,
+        start_time: "15:00",
+        guest_name: "Anonymous Guest",
+        guest_phone: "+10000000005",
+        party_size: 2,
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const reservation = await createRes.json();
+    reservationIds.push(reservation.id);
+    expect(reservation.guest_user_id).toBeNull();
+  });
+
+  it("a guest can cancel their own reservation, but not someone else's", async () => {
+    const ownerEmail = `tf-cancel-owner-${Date.now()}@example.com`;
+    const strangerEmail = `tf-cancel-stranger-${Date.now()}@example.com`;
+    const [ownerToken, strangerToken] = await Promise.all([
+      createGuestToken(ownerEmail),
+      createGuestToken(strangerEmail),
+    ]);
+    const users = (await admin.auth.admin.listUsers()).data.users;
+    guestUserIds.push(users.find((u) => u.email === ownerEmail)!.id, users.find((u) => u.email === strangerEmail)!.id);
+
+    const createRes = await createReservation(
+      jsonRequest("/api/reservations", "POST", ownerToken, {
+        table_id: tableAId,
+        date: dateStr,
+        start_time: "17:00",
+        guest_name: "Cancel Owner",
+        guest_phone: "+10000000006",
+        party_size: 2,
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const reservation = await createRes.json();
+    reservationIds.push(reservation.id);
+
+    const strangerCancelRes = await cancelReservation(
+      jsonRequest(`/api/reservations/${reservation.id}/cancel`, "POST", strangerToken),
+      { params: Promise.resolve({ id: String(reservation.id) }) }
+    );
+    expect(strangerCancelRes.status).toBe(404);
+
+    const ownerCancelRes = await cancelReservation(
+      jsonRequest(`/api/reservations/${reservation.id}/cancel`, "POST", ownerToken),
+      { params: Promise.resolve({ id: String(reservation.id) }) }
+    );
+    expect(ownerCancelRes.status).toBe(200);
+    expect((await ownerCancelRes.json()).status).toBe("cancelled");
+  });
+
+  it("a signed-in guest cannot cancel someone else's anonymous reservation", async () => {
+    const anonCreateRes = await createReservation(
+      jsonRequest("/api/reservations", "POST", null, {
+        table_id: tableBId,
+        date: dateStr,
+        start_time: "08:00",
+        guest_name: "Anonymous Owner",
+        guest_phone: "+10000000007",
+        party_size: 2,
+      })
+    );
+    expect(anonCreateRes.status).toBe(201);
+    const reservation = await anonCreateRes.json();
+    reservationIds.push(reservation.id);
+    expect(reservation.guest_user_id).toBeNull();
+
+    const strangerEmail = `tf-cancel-anon-stranger-${Date.now()}@example.com`;
+    const strangerToken = await createGuestToken(strangerEmail);
+    guestUserIds.push((await admin.auth.admin.listUsers()).data.users.find((u) => u.email === strangerEmail)!.id);
+
+    // strict `guest_user_id !== user.id` comparison must treat null (anonymous)
+    // and a real guest id as never equal - not fall through to "matches".
+    const res = await cancelReservation(jsonRequest(`/api/reservations/${reservation.id}/cancel`, "POST", strangerToken), {
+      params: Promise.resolve({ id: String(reservation.id) }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("cancelling an already-cancelled reservation is rejected (409)", async () => {
+    const guestEmail = `tf-double-cancel-${Date.now()}@example.com`;
+    const guestToken = await createGuestToken(guestEmail);
+    guestUserIds.push((await admin.auth.admin.listUsers()).data.users.find((u) => u.email === guestEmail)!.id);
+
+    const createRes = await createReservation(
+      jsonRequest("/api/reservations", "POST", guestToken, {
+        table_id: tableBId,
+        date: dateStr,
+        start_time: "09:30",
+        guest_name: "Double Cancel",
+        guest_phone: "+10000000008",
+        party_size: 2,
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const reservation = await createRes.json();
+    reservationIds.push(reservation.id);
+
+    const firstCancel = await cancelReservation(jsonRequest(`/api/reservations/${reservation.id}/cancel`, "POST", guestToken), {
+      params: Promise.resolve({ id: String(reservation.id) }),
+    });
+    expect(firstCancel.status).toBe(200);
+
+    const secondCancel = await cancelReservation(jsonRequest(`/api/reservations/${reservation.id}/cancel`, "POST", guestToken), {
+      params: Promise.resolve({ id: String(reservation.id) }),
+    });
+    expect(secondCancel.status).toBe(409);
+  });
+
+  it("cancel requires authentication", async () => {
+    const res = await cancelReservation(jsonRequest("/api/reservations/999999999/cancel", "POST", null), {
+      params: Promise.resolve({ id: "999999999" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects a booking date beyond the advance-booking window", async () => {
+    const res = await createReservation(
+      jsonRequest("/api/reservations", "POST", null, {
+        table_id: tableAId,
+        date: "2099-01-01",
+        start_time: "12:00",
+        guest_name: "Too Far Ahead",
+        guest_phone: "+10000000009",
+        party_size: 2,
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("validation_failed");
+    expect(body.details.date).toBeDefined();
   });
 });

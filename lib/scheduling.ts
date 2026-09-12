@@ -56,3 +56,19 @@ export function restaurantNowMinutes(): number {
   const d = restaurantLocalNow();
   return d.getUTCHours() * 60 + d.getUTCMinutes();
 }
+
+// How far out a reservation may be dated. Without this, an anonymous guest
+// (booking needs no session at all - see POST /api/reservations) could park
+// a table on a date decades out and hold it forever: the EXCLUDE constraint
+// treats any 'pending'/'confirmed' row as blocking, with nothing to ever
+// expire it. A bounded window turns "unbookable forever" into "unbookable
+// for MAX_ADVANCE_BOOKING_DAYS", which staff can actually clean up.
+export const MAX_ADVANCE_BOOKING_DAYS = 90;
+
+/** The latest date a reservation may be made for, in the restaurant's local
+ * timezone, as YYYY-MM-DD. */
+export function maxAdvanceBookingDateIso(): string {
+  const d = new Date(Date.now() + RESTAURANT_UTC_OFFSET_MINUTES * 60_000);
+  d.setUTCDate(d.getUTCDate() + MAX_ADVANCE_BOOKING_DAYS);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}

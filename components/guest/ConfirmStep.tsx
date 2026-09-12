@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { motion } from "motion/react";
 import { formatDateTime, guestsLabel } from "@/lib/ru";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import type { DiningTable } from "@/components/hostess/TableForm";
 
 export function ConfirmStep({
@@ -12,6 +14,9 @@ export function ConfirmStep({
   submitting,
   error,
   onSubmit,
+  defaultName = "",
+  defaultPhone = "",
+  defaultEmail = "",
 }: {
   table: DiningTable;
   date: string;
@@ -20,13 +25,17 @@ export function ConfirmStep({
   submitting: boolean;
   error: string | null;
   onSubmit: (fields: { name: string; phone: string; email: string }) => void;
+  defaultName?: string;
+  defaultPhone?: string;
+  defaultEmail?: string;
 }) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(defaultName);
+  const [phone, setPhone] = useState(defaultPhone);
+  const [email, setEmail] = useState(defaultEmail);
 
   const hasContact = phone.trim().length > 0 || email.trim().length > 0;
   const canSubmit = name.trim().length > 0 && hasContact && !submitting;
+  const prefilled = Boolean(defaultName || defaultPhone || defaultEmail);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -43,6 +52,10 @@ export function ConfirmStep({
           Стол {table.label} · {guestsLabel(partySize)}
         </p>
       </div>
+
+      {prefilled && (
+        <p className="-mb-1 text-xs text-muted">Данные подставлены из вашего аккаунта — при необходимости измените.</p>
+      )}
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium text-ink">Имя</span>
@@ -88,13 +101,16 @@ export function ConfirmStep({
 
       {error && <p className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">{error}</p>}
 
-      <button
+      <motion.button
         type="submit"
         disabled={!canSubmit}
-        className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
+        whileHover={canSubmit ? { scale: 1.02 } : undefined}
+        whileTap={canSubmit ? { scale: 0.97 } : undefined}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-claret-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? "Подтверждаем…" : "Забронировать стол"}
-      </button>
+        {submitting ? <LoadingIndicator label="Подтверждаем…" /> : "Забронировать стол"}
+      </motion.button>
     </form>
   );
 }

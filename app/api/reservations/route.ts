@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthenticatedUser, requireStaff } from "@/lib/supabase/auth";
 import { RESERVATION_STATUSES, STATUS_LABELS_RU, mapRpcError } from "@/lib/reservations";
-import { DEFAULT_DURATION_MINUTES } from "@/lib/scheduling";
-
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { DEFAULT_DURATION_MINUTES, maxAdvanceBookingDateIso, restaurantTodayIso } from "@/lib/scheduling";
 
 // Staff-only: list reservations with optional filters.
 export async function GET(request: NextRequest) {
@@ -69,12 +65,17 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(results);
 }
 
-// Public (guest, authenticated): create a single-table self-service reservation.
+// Public: create a single-table self-service reservation. Authentication is
+// optional here on purpose - the booking flow must work all the way
+// through for a fully anonymous guest, per the "sign-in never gates
+// booking" requirement. A present, valid session just attaches the
+// reservation to that account (guest_user_id); anything else - no
+// Authorization header, or a token that fails to verify (e.g. an expired
+// session) - falls back to an anonymous booking rather than blocking it,
+// since a stale client-side session is not something a guest here to book
+// a table should have to troubleshoot.
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
-  if (!user) {
-    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
-  }
 
   const payload = await request.json().catch(() => ({}));
   const { table_id, date, start_time, guest_name, guest_phone, guest_email, party_size } = payload as Record<
@@ -84,8 +85,18 @@ export async function POST(request: NextRequest) {
 
   const errors: Record<string, string> = {};
   if (typeof table_id !== "number" || !Number.isInteger(table_id)) errors.table_id = "обязательное поле";
-  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.date = "формат даты: ГГГГ-ММ-ДД";
-  if (typeof start_time !== "string" || !/^\d{2}:\d{2}(:\d{2})?$/.test(start_time)) errors.start_time = "формат времени: ЧЧ:ММ";
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    errors.date = "формат даты: ГГГГ-ММ-ДД";
+  } else if (date > maxAdvanceBookingDateIso()) {
+    // No app-level cap on how far out a booking could be dated would let an
+    // anonymous caller (this endpoint needs no session - see below) park a
+    // table decades in the future and hold it forever, since a
+    // pending/confirmed row blocks the table indefinitely.
+    errors.date = "бронировать можно не более чем на 90 дней вперёд";
+  }
+  if (typeof start_time !== "string" || !/^\d{2}:\d{2}(:\d{2})?$/.test(start_time)) {
+    errors.start_time = "формат времени: ЧЧ:ММ";
+  }
 
   if (typeof guest_name !== "string" || !guest_name.trim()) {
     errors.guest_name = "обязательное поле";
@@ -108,7 +119,7 @@ export async function POST(request: NextRequest) {
   if (typeof party_size !== "number" || !Number.isInteger(party_size) || party_size < 1 || party_size > 100) {
     errors.party_size = "должно быть положительным целым числом (не более 100)";
   }
-  if (typeof date === "string" && date < todayIsoDate()) {
+  if (typeof date === "string" && date < restaurantTodayIso()) {
     errors.date = "нельзя забронировать в прошлом";
   }
 
@@ -141,7 +152,7 @@ export async function POST(request: NextRequest) {
     p_date: date as string,
     p_start_time: start_time as string,
     p_duration_minutes: DEFAULT_DURATION_MINUTES,
-    p_guest_user_id: user.id,
+    p_guest_user_id: user?.id ?? null,
     p_guest_name: (guest_name as string).trim(),
     p_guest_phone: (guest_phone as string | undefined) ?? null,
     p_guest_email: (guest_email as string | undefined) ?? null,

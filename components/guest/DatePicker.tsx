@@ -20,14 +20,16 @@ function monthLabel(d: Date): string {
 }
 
 /** Compact popover calendar - Monday-first, Russian month/weekday labels,
- * dates before `minDate` disabled (dimmed, not hidden). */
+ * dates outside [minDate, maxDate] disabled (dimmed, not hidden). */
 export function DatePicker({
   value,
   minDate,
+  maxDate,
   onChange,
 }: {
   value: string;
   minDate?: string;
+  maxDate?: string;
   onChange: (date: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -36,6 +38,8 @@ export function DatePicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const min = minDate ? fromIso(minDate) : null;
+  const max = maxDate ? fromIso(maxDate) : null;
+  const canGoNextMonth = !max || viewMonth.getFullYear() < max.getFullYear() || viewMonth.getMonth() < max.getMonth();
 
   function close() {
     setOpen(false);
@@ -73,7 +77,7 @@ export function DatePicker({
   ];
 
   function isDisabled(d: Date): boolean {
-    return min !== null && d < min;
+    return (min !== null && d < min) || (max !== null && d > max);
   }
 
   return (
@@ -112,8 +116,9 @@ export function DatePicker({
             <button
               type="button"
               aria-label="Следующий месяц"
+              disabled={!canGoNextMonth}
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted"
             >
               ›
             </button>
