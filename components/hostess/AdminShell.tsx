@@ -11,6 +11,7 @@ import { SoundToggle } from "./SoundToggle";
 const NAV = [
   { href: "/hostess", label: "Брони" },
   { href: "/hostess/halls", label: "Залы" },
+  { href: "/hostess/staff", label: "Сотрудники" },
 ];
 
 /** Wraps every protected /hostess/* page: redirects to /hostess/login if
