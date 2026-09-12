@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseError } from "@/lib/api";
+import { useReservationsRealtime } from "@/hooks/useReservationsRealtime";
+import { restaurantTodayIso } from "@/lib/scheduling";
 import { AdminShell } from "@/components/hostess/AdminShell";
 import { Modal } from "@/components/Modal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -11,19 +13,6 @@ import { TableForm, type DiningTable } from "@/components/hostess/TableForm";
 import { FloorPlanCanvas } from "@/components/hostess/FloorPlanCanvas";
 
 type Hall = { id: number; name: string; description: string | null };
-
-async function parseError(res: Response): Promise<string> {
-  const body = await res.json().catch(() => ({}));
-  if (body.error === "validation_failed") {
-    return Object.values(body.details ?? {}).join(" ");
-  }
-  return body.error ?? "Something went wrong.";
-}
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function HallTablesContent({ hallId }: { hallId: number }) {
   const [hall, setHall] = useState<Hall | null>(null);
@@ -38,15 +27,27 @@ function HallTablesContent({ hallId }: { hallId: number }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const refreshReservedToday = useCallback(async () => {
+    const res = await apiFetch(`/api/reservations?date=${restaurantTodayIso()}&hall_id=${hallId}`);
+    if (!res.ok) {
+      console.error("[halls/[hallId]] refreshReservedToday failed", res.status);
+      return;
+    }
+    const reservations: { status: string; reservation_tables: { table_id: number }[] }[] = await res.json();
+    const ids = new Set<number>();
+    for (const r of reservations) {
+      if (r.status === "pending" || r.status === "confirmed") {
+        for (const rt of r.reservation_tables) ids.add(rt.table_id);
+      }
+    }
+    setReservedTodayIds(ids);
+  }, [hallId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [hallsRes, tablesRes, reservationsRes] = await Promise.all([
-        fetch("/api/halls"),
-        fetch(`/api/tables?hall_id=${hallId}`),
-        apiFetch(`/api/reservations?date=${todayIso()}&hall_id=${hallId}`),
-      ]);
+      const [hallsRes, tablesRes] = await Promise.all([fetch("/api/halls"), fetch(`/api/tables?hall_id=${hallId}`)]);
       if (!hallsRes.ok || !tablesRes.ok) {
         setLoadError(await parseError(!hallsRes.ok ? hallsRes : tablesRes));
         return;
@@ -54,33 +55,32 @@ function HallTablesContent({ hallId }: { hallId: number }) {
       const halls: Hall[] = await hallsRes.json();
       const currentHall = halls.find((h) => h.id === hallId) ?? null;
       if (!currentHall) {
-        setLoadError(`Hall ${hallId} not found`);
+        setLoadError(`Зал ${hallId} не найден`);
         return;
       }
       setHall(currentHall);
       setTables(await tablesRes.json());
-
-      if (reservationsRes.ok) {
-        const reservations: { status: string; reservation_tables: { table_id: number }[] }[] = await reservationsRes.json();
-        const ids = new Set<number>();
-        for (const r of reservations) {
-          if (r.status === "pending" || r.status === "confirmed") {
-            for (const rt of r.reservation_tables) ids.add(rt.table_id);
-          }
-        }
-        setReservedTodayIds(ids);
-      }
+      await refreshReservedToday();
     } catch {
-      setLoadError("Couldn't reach the server. Check your connection and try again.");
+      setLoadError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
     } finally {
       setLoading(false);
     }
-  }, [hallId]);
+  }, [hallId, refreshReservedToday]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount, the canonical Effects use case
     load();
   }, [load]);
+
+  // Today's reserved-table set can change from another tab/device (a new
+  // booking, a cancellation) - refresh just that set via realtime rather
+  // than reloading the hall/tables data too.
+  useReservationsRealtime(
+    useCallback(() => {
+      refreshReservedToday();
+    }, [refreshReservedToday])
+  );
 
   async function handleCreate(fields: { label: string; shape: DiningTable["shape"]; min_capacity: number; max_capacity: number; is_active: boolean }) {
     setSubmitting(true);
@@ -159,7 +159,7 @@ function HallTablesContent({ hallId }: { hallId: number }) {
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <Link href="/hostess/halls" className="text-xs uppercase tracking-[0.14em] text-muted hover:text-claret">
-            ← Halls
+            ← Залы
           </Link>
           <h1 className="mt-1 font-display text-3xl text-ink text-balance">{hall?.name}</h1>
           {hall?.description && <p className="mt-1 text-sm text-muted">{hall.description}</p>}
@@ -169,11 +169,13 @@ function HallTablesContent({ hallId }: { hallId: number }) {
           onClick={() => setCreateOpen(true)}
           className="inline-flex h-10 items-center justify-center rounded-lg bg-claret px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
         >
-          + New table
+          + Новый стол
         </button>
       </div>
 
-      <p className="mb-3 text-sm text-muted">Drag tables to arrange the floor plan. Click a table to edit it.</p>
+      <p className="mb-3 text-sm text-muted">
+        Перетаскивайте столы, чтобы расставить их по плану. Нажмите на стол, чтобы изменить его.
+      </p>
       <FloorPlanCanvas
         tables={tables}
         reservedTodayIds={reservedTodayIds}
@@ -181,37 +183,37 @@ function HallTablesContent({ hallId }: { hallId: number }) {
         onSelect={(table) => setEditingTable(table)}
       />
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New table">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Новый стол">
         <TableForm submitting={submitting} error={formError} onSubmit={handleCreate} />
       </Modal>
 
-      <Modal open={editingTable !== null} onClose={() => setEditingTable(null)} title={`Table ${editingTable?.label ?? ""}`}>
+      <Modal open={editingTable !== null} onClose={() => setEditingTable(null)} title={`Стол ${editingTable?.label ?? ""}`}>
         {editingTable && (
           <div className="flex flex-col gap-5">
             <TableForm initial={editingTable} submitting={submitting} error={formError} onSubmit={handleEdit} />
             <div className="border-t border-line pt-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.1em] text-muted">Manual override</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.1em] text-muted">Ручной статус</p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => handleManualStatus(editingTable, "occupied")}
                   className="rounded-lg border border-status-cancelled px-3 py-1.5 text-xs font-medium text-status-cancelled transition-colors hover:bg-status-cancelled-tint"
                 >
-                  Mark occupied
+                  Отметить занятым
                 </button>
                 <button
                   type="button"
                   onClick={() => handleManualStatus(editingTable, "out_of_service")}
                   className="rounded-lg border border-status-noshow px-3 py-1.5 text-xs font-medium text-status-noshow transition-colors hover:bg-status-noshow-tint"
                 >
-                  Mark out of service
+                  Вывести из работы
                 </button>
                 <button
                   type="button"
                   onClick={() => handleManualStatus(editingTable, null)}
                   className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-paper"
                 >
-                  Clear override
+                  Сбросить статус
                 </button>
               </div>
             </div>
@@ -220,7 +222,7 @@ function HallTablesContent({ hallId }: { hallId: number }) {
               onClick={() => setDeletingTable(editingTable)}
               className="text-left text-sm text-status-cancelled underline decoration-status-cancelled/40 underline-offset-4 hover:brightness-90"
             >
-              Delete this table
+              Удалить этот стол
             </button>
           </div>
         )}
@@ -230,9 +232,9 @@ function HallTablesContent({ hallId }: { hallId: number }) {
         open={deletingTable !== null}
         onClose={() => setDeletingTable(null)}
         onConfirm={handleDelete}
-        title="Delete table"
-        message={`Delete table "${deletingTable?.label}"? Tables with active reservations can't be deleted - cancel or move them first.`}
-        confirmLabel="Delete"
+        title="Удаление стола"
+        message={`Удалить стол «${deletingTable?.label}»? Столы с активными бронями удалить нельзя - сначала отмените или перенесите их.`}
+        confirmLabel="Удалить"
         danger
       />
     </>
@@ -248,7 +250,7 @@ export default function HallTablesPage() {
       {Number.isInteger(hallId) ? (
         <HallTablesContent hallId={hallId} />
       ) : (
-        <p className="text-sm text-status-cancelled">Invalid hall.</p>
+        <p className="text-sm text-status-cancelled">Некорректный зал.</p>
       )}
     </AdminShell>
   );

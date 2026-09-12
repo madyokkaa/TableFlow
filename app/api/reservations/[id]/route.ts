@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
-import { ALLOWED_STATUS_TRANSITIONS, RESERVATION_STATUSES, type ReservationStatus, mapRpcError } from "@/lib/reservations";
+import { ALLOWED_STATUS_TRANSITIONS, RESERVATION_STATUSES, STATUS_LABELS_RU, type ReservationStatus, mapRpcError } from "@/lib/reservations";
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -10,13 +10,13 @@ function todayIsoDate(): string {
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff(request);
   if (!staff) {
-    return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
   const { id } = await context.params;
   const reservationId = Number(id);
   if (!Number.isInteger(reservationId)) {
-    return NextResponse.json({ error: "invalid reservation id" }, { status: 400 });
+    return NextResponse.json({ error: "некорректный ID брони" }, { status: 400 });
   }
 
   const payload = await request.json().catch(() => ({}));
@@ -41,20 +41,20 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     .maybeSingle();
   if (currentError) {
     console.error("[reservations.update] lookup failed", currentError);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
   if (!current) {
-    return NextResponse.json({ error: `reservation ${reservationId} not found` }, { status: 404 });
+    return NextResponse.json({ error: `бронь ${reservationId} не найдена` }, { status: 404 });
   }
 
   const errors: Record<string, string> = {};
 
   if (date !== undefined) {
-    if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.date = "must be YYYY-MM-DD";
-    else if (date < todayIsoDate()) errors.date = "cannot move a reservation into the past";
+    if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.date = "формат даты: ГГГГ-ММ-ДД";
+    else if (date < todayIsoDate()) errors.date = "нельзя перенести бронь в прошлое";
   }
   if (start_time !== undefined && (typeof start_time !== "string" || !/^\d{2}:\d{2}(:\d{2})?$/.test(start_time))) {
-    errors.start_time = "must be HH:MM";
+    errors.start_time = "формат времени: ЧЧ:ММ";
   }
   if (
     duration_minutes !== undefined &&
@@ -63,28 +63,28 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       duration_minutes <= 0 ||
       duration_minutes > 480)
   ) {
-    errors.duration_minutes = "must be a positive integer no greater than 480 (8 hours)";
+    errors.duration_minutes = "должно быть положительным целым числом, не более 480 (8 часов)";
   }
   if (party_size !== undefined) {
     if (typeof party_size !== "number" || !Number.isInteger(party_size) || party_size < 1 || party_size > 100) {
-      errors.party_size = "must be a positive integer (max 100)";
+      errors.party_size = "должно быть положительным целым числом (не более 100)";
     }
   }
   if (guest_name !== undefined) {
-    if (typeof guest_name !== "string" || !guest_name.trim()) errors.guest_name = "required";
-    else if (guest_name.length > 120) errors.guest_name = "must be at most 120 characters";
+    if (typeof guest_name !== "string" || !guest_name.trim()) errors.guest_name = "обязательное поле";
+    else if (guest_name.length > 120) errors.guest_name = "не более 120 символов";
   }
   if (guest_phone !== undefined && guest_phone !== null && typeof guest_phone !== "string") {
-    errors.guest_phone = "must be a string";
+    errors.guest_phone = "должно быть строкой";
   }
   if (guest_email !== undefined && guest_email !== null && typeof guest_email !== "string") {
-    errors.guest_email = "must be a string";
+    errors.guest_email = "должно быть строкой";
   }
 
   let nextStatus: ReservationStatus | undefined;
   if (status !== undefined) {
     if (typeof status !== "string" || !(RESERVATION_STATUSES as readonly string[]).includes(status)) {
-      errors.status = `must be one of ${RESERVATION_STATUSES.join(", ")}`;
+      errors.status = `должно быть одним из: ${RESERVATION_STATUSES.map((s) => STATUS_LABELS_RU[s]).join(", ")}`;
     } else {
       nextStatus = status as ReservationStatus;
       // A no-op ("keep the current status") is always fine - it's every
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       if (nextStatus !== current.status) {
         const allowed = ALLOWED_STATUS_TRANSITIONS[current.status as ReservationStatus] ?? [];
         if (!allowed.includes(nextStatus)) {
-          errors.status = `cannot move a reservation from '${current.status}' to '${nextStatus}'`;
+          errors.status = `нельзя перевести бронь из статуса «${STATUS_LABELS_RU[current.status as ReservationStatus]}» в «${STATUS_LABELS_RU[nextStatus]}»`;
         }
       }
     }
@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   let tableIds: number[] | undefined;
   if (table_ids !== undefined) {
     if (!Array.isArray(table_ids) || table_ids.length === 0 || !table_ids.every((t) => Number.isInteger(t))) {
-      errors.table_ids = "must be a non-empty array of table ids";
+      errors.table_ids = "укажите хотя бы один стол";
     } else {
       tableIds = table_ids as number[];
     }
@@ -119,15 +119,18 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       .in("id", tableIds);
     if (tablesError) {
       console.error("[reservations.update] table lookup failed", tablesError);
-      return NextResponse.json({ error: "internal_error" }, { status: 500 });
+      return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
     }
     if (!tables || tables.length !== tableIds.length) {
-      return NextResponse.json({ error: "validation_failed", details: { table_ids: "one or more tables not found" } }, { status: 400 });
+      return NextResponse.json(
+        { error: "validation_failed", details: { table_ids: "один или несколько столов не найдены" } },
+        { status: 400 }
+      );
     }
     const hallIds = new Set(tables.map((t) => t.hall_id));
     if (hallIds.size > 1) {
       return NextResponse.json(
-        { error: "validation_failed", details: { table_ids: "combined tables must be in the same hall" } },
+        { error: "validation_failed", details: { table_ids: "объединяемые столы должны быть в одном зале" } },
         { status: 400 }
       );
     }
@@ -163,7 +166,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     .single();
   if (fetchError) {
     console.error("[reservations.update] fetch-after-update failed", fetchError);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
 
   return NextResponse.json(updated);

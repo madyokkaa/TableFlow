@@ -7,7 +7,7 @@ export async function GET() {
   const { data, error } = await supabase.from("halls").select("*").order("name");
   if (error) {
     console.error("[halls.list] query failed", error);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
   return NextResponse.json(data);
 }
@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const staff = await requireStaff(request);
   if (!staff) {
-    return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
   const payload = await request.json().catch(() => ({}));
@@ -23,14 +23,14 @@ export async function POST(request: NextRequest) {
 
   const errors: Record<string, string> = {};
   if (typeof name !== "string" || !name.trim()) {
-    errors.name = "required";
+    errors.name = "обязательное поле";
   } else if (name.trim().length > 120) {
-    errors.name = "must be at most 120 characters";
+    errors.name = "не более 120 символов";
   }
   if (description !== undefined && description !== null && typeof description !== "string") {
-    errors.description = "must be a string";
+    errors.description = "должно быть строкой";
   } else if (typeof description === "string" && description.length > 2000) {
-    errors.description = "must be at most 2000 characters";
+    errors.description = "не более 2000 символов";
   }
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ error: "validation_failed", details: errors }, { status: 400 });
@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
   if (error) {
     if (error.code === "23505") {
       return NextResponse.json(
-        { error: "validation_failed", details: { name: "a hall with this name already exists" } },
+        { error: "validation_failed", details: { name: "зал с таким названием уже существует" } },
         { status: 409 }
       );
     }
     console.error("[halls.create] insert failed", error);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });

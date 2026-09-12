@@ -1,24 +1,25 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { AvailableSlot } from "./SlotGrid";
+import { formatDateTime, guestsLabel } from "@/lib/ru";
+import type { DiningTable } from "@/components/hostess/TableForm";
 
-function formatTime(time: string): string {
-  return time.slice(0, 5);
-}
-
-export function BookingForm({
-  slot,
+export function ConfirmStep({
+  table,
+  date,
+  time,
+  partySize,
   submitting,
   error,
   onSubmit,
-  onChangeSlot,
 }: {
-  slot: AvailableSlot;
+  table: DiningTable;
+  date: string;
+  time: string;
+  partySize: number;
   submitting: boolean;
   error: string | null;
   onSubmit: (fields: { name: string; phone: string; email: string }) => void;
-  onChangeSlot: () => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -34,32 +35,17 @@ export function BookingForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6"
-      style={{
-        animation: "form-enter 260ms ease-out",
-      }}
-    >
-      <div className="flex items-center justify-between gap-4 border-b border-line pb-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">Your table</p>
-          <p className="mt-1 font-mono text-lg font-medium tabular-nums">{formatTime(slot.start_time)}</p>
-          <p className="text-sm text-muted">
-            {slot.hall_name ?? "Hall"} · Table {slot.table_label} · seats {slot.capacity}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onChangeSlot}
-          className="text-sm text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
-        >
-          Change
-        </button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6">
+      <div className="border-b border-line pb-4">
+        <p className="text-xs uppercase tracking-[0.14em] text-muted">Ваш столик</p>
+        <p className="mt-1 font-mono text-lg font-medium tabular-nums capitalize">{formatDateTime(date, time)}</p>
+        <p className="text-sm text-muted">
+          Стол {table.label} · {guestsLabel(partySize)}
+        </p>
       </div>
 
       <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Name</span>
+        <span className="font-medium text-ink">Имя</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -67,20 +53,20 @@ export function BookingForm({
           maxLength={120}
           autoComplete="name"
           className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-          placeholder="Jane Doe"
+          placeholder="Иван Иванов"
         />
       </label>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Phone</span>
+          <span className="font-medium text-ink">Телефон</span>
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             maxLength={30}
             autoComplete="tel"
             className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-            placeholder="+1 555 0100"
+            placeholder="+7 900 000-00-00"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
@@ -92,24 +78,22 @@ export function BookingForm({
             maxLength={255}
             autoComplete="email"
             className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-            placeholder="jane@example.com"
+            placeholder="ivan@example.com"
           />
         </label>
       </div>
       {!hasContact && (
-        <p className="-mt-2 text-xs text-muted">Give us a phone number or an email so we can reach you.</p>
+        <p className="-mt-2 text-xs text-muted">Укажите телефон или email, чтобы мы могли с вами связаться.</p>
       )}
 
-      {error && (
-        <p className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">{error}</p>
-      )}
+      {error && <p className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">{error}</p>}
 
       <button
         type="submit"
         disabled={!canSubmit}
         className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
       >
-        {submitting ? "Confirming…" : "Request this table"}
+        {submitting ? "Подтверждаем…" : "Забронировать стол"}
       </button>
     </form>
   );

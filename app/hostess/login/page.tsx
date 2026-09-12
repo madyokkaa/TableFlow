@@ -25,7 +25,7 @@ export default function HostessLoginPage() {
       // show one generic message for both rather than guessing which it was.
       setError(
         error.message.toLowerCase().includes("invalid")
-          ? "Incorrect email or password."
+          ? "Неверный email или пароль."
           : error.message
       );
       return;
@@ -36,8 +36,8 @@ export default function HostessLoginPage() {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">TableFlow · Staff</p>
-      <h1 className="mt-2 font-display text-3xl text-ink text-balance">Hostess sign-in</h1>
-      <p className="mt-2 text-sm text-muted">Staff accounts are provisioned by invitation only.</p>
+      <h1 className="mt-2 font-display text-3xl text-ink text-balance">Вход для персонала</h1>
+      <p className="mt-2 text-sm text-muted">Учётные записи персонала создаются только по приглашению.</p>
 
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
         <label className="flex flex-col gap-1.5 text-sm">
@@ -52,7 +52,7 @@ export default function HostessLoginPage() {
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Password</span>
+          <span className="font-medium text-ink">Пароль</span>
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -68,13 +68,13 @@ export default function HostessLoginPage() {
           disabled={submitting}
           className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
         >
-          {submitting ? "Signing in…" : "Sign in"}
+          {submitting ? "Входим…" : "Войти"}
         </button>
         <a
           href="/hostess/forgot-password"
           className="text-center text-sm text-muted underline decoration-line underline-offset-4 transition-colors hover:text-claret"
         >
-          Forgot password?
+          Забыли пароль?
         </a>
       </form>
     </main>

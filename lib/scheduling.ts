@@ -29,3 +29,30 @@ export function timeToMinutes(time: string): number {
 export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
 }
+
+// The restaurant's fixed local offset (Europe/Moscow, UTC+3 - Russia hasn't
+// observed DST since 2014, so a plain fixed offset is safe here). Both the
+// guest client (picking "today") and the server (filtering elapsed slots)
+// need to agree on what "today"/"now" means in the restaurant's clock, not
+// the browser's or the server's own timezone - comparing a restaurant
+// wall-clock time against server UTC-of-day (as the code briefly did) is
+// off by this many hours for anyone not in UTC+0.
+export const RESTAURANT_UTC_OFFSET_MINUTES = 180;
+
+function restaurantLocalNow(): Date {
+  return new Date(Date.now() + RESTAURANT_UTC_OFFSET_MINUTES * 60_000);
+}
+
+/** Today's date in the restaurant's local timezone, as YYYY-MM-DD - safe to
+ * call from either the browser or the server, since it never touches the
+ * caller's own timezone. */
+export function restaurantTodayIso(): string {
+  const d = restaurantLocalNow();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** Minutes since midnight, restaurant local time. */
+export function restaurantNowMinutes(): number {
+  const d = restaurantLocalNow();
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+}

@@ -8,13 +8,13 @@ const MANUAL_STATUSES = ["occupied", "out_of_service"] as const;
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff(request);
   if (!staff) {
-    return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
   const { id } = await context.params;
   const tableId = Number(id);
   if (!Number.isInteger(tableId)) {
-    return NextResponse.json({ error: "invalid table id" }, { status: 400 });
+    return NextResponse.json({ error: "некорректный ID стола" }, { status: 400 });
   }
 
   const payload = await request.json().catch(() => ({}));
@@ -25,23 +25,23 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   const update: Record<string, unknown> = {};
 
   if (label !== undefined) {
-    if (typeof label !== "string" || !label.trim()) errors.label = "required";
-    else if (label.trim().length > 40) errors.label = "must be at most 40 characters";
+    if (typeof label !== "string" || !label.trim()) errors.label = "обязательное поле";
+    else if (label.trim().length > 40) errors.label = "не более 40 символов";
     else update.label = label.trim();
   }
   if (shape !== undefined) {
     if (typeof shape !== "string" || !SHAPES.includes(shape as (typeof SHAPES)[number])) {
-      errors.shape = `must be one of ${SHAPES.join(", ")}`;
+      errors.shape = `должно быть одним из: ${SHAPES.join(", ")}`;
     } else update.shape = shape;
   }
   if (min_capacity !== undefined) {
     if (typeof min_capacity !== "number" || !Number.isInteger(min_capacity) || min_capacity < 1) {
-      errors.min_capacity = "must be a positive integer";
+      errors.min_capacity = "должно быть положительным целым числом";
     } else update.min_capacity = min_capacity;
   }
   if (max_capacity !== undefined) {
     if (typeof max_capacity !== "number" || !Number.isInteger(max_capacity)) {
-      errors.max_capacity = "must be an integer";
+      errors.max_capacity = "должно быть целым числом";
     } else update.max_capacity = max_capacity;
   }
   if (
@@ -49,27 +49,27 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     typeof update.max_capacity === "number" &&
     update.max_capacity < update.min_capacity
   ) {
-    errors.max_capacity = "must be >= min_capacity";
+    errors.max_capacity = "должно быть ≥ минимальной вместимости";
   }
   if (pos_x !== undefined) {
-    if (typeof pos_x !== "number") errors.pos_x = "must be a number";
+    if (typeof pos_x !== "number") errors.pos_x = "должно быть числом";
     else update.pos_x = pos_x;
   }
   if (pos_y !== undefined) {
-    if (typeof pos_y !== "number") errors.pos_y = "must be a number";
+    if (typeof pos_y !== "number") errors.pos_y = "должно быть числом";
     else update.pos_y = pos_y;
   }
   if (is_active !== undefined) {
-    if (typeof is_active !== "boolean") errors.is_active = "must be a boolean";
+    if (typeof is_active !== "boolean") errors.is_active = "должно быть true или false";
     else update.is_active = is_active;
   }
   if (manual_status !== undefined) {
     if (manual_status !== null && !MANUAL_STATUSES.includes(manual_status as (typeof MANUAL_STATUSES)[number])) {
-      errors.manual_status = `must be null or one of ${MANUAL_STATUSES.join(", ")}`;
+      errors.manual_status = `должно быть null или одним из: ${MANUAL_STATUSES.join(", ")}`;
     } else update.manual_status = manual_status;
   }
   if (hall_id !== undefined) {
-    if (typeof hall_id !== "number" || !Number.isInteger(hall_id)) errors.hall_id = "must be an integer";
+    if (typeof hall_id !== "number" || !Number.isInteger(hall_id)) errors.hall_id = "должно быть целым числом";
     else update.hall_id = hall_id;
   }
 
@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "validation_failed", details: errors }, { status: 400 });
   }
   if (Object.keys(update).length === 0) {
-    return NextResponse.json({ error: "no fields to update" }, { status: 400 });
+    return NextResponse.json({ error: "нет полей для обновления" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -86,7 +86,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (error) {
     if (error.code === "23505") {
       return NextResponse.json(
-        { error: "validation_failed", details: { label: "a table with this label already exists in this hall" } },
+        { error: "validation_failed", details: { label: "стол с таким номером уже есть в этом зале" } },
         { status: 409 }
       );
     }
@@ -94,18 +94,18 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       // Constraint name/message would leak internal column/table names -
       // the only checks on this table are the min/max capacity ordering.
       return NextResponse.json(
-        { error: "validation_failed", details: { max_capacity: "must be >= min_capacity" } },
+        { error: "validation_failed", details: { max_capacity: "должно быть ≥ минимальной вместимости" } },
         { status: 400 }
       );
     }
     if (error.code === "23503") {
-      return NextResponse.json({ error: "validation_failed", details: { hall_id: "hall not found" } }, { status: 400 });
+      return NextResponse.json({ error: "validation_failed", details: { hall_id: "зал не найден" } }, { status: 400 });
     }
     console.error("[tables.update] update failed", error);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
   if (!data) {
-    return NextResponse.json({ error: `table ${tableId} not found` }, { status: 404 });
+    return NextResponse.json({ error: `стол ${tableId} не найден` }, { status: 404 });
   }
 
   return NextResponse.json(data);
@@ -114,13 +114,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff(request);
   if (!staff) {
-    return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
   const { id } = await context.params;
   const tableId = Number(id);
   if (!Number.isInteger(tableId)) {
-    return NextResponse.json({ error: "invalid table id" }, { status: 400 });
+    return NextResponse.json({ error: "некорректный ID стола" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -132,11 +132,11 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     .in("status", ["pending", "confirmed"]);
   if (activeError) {
     console.error("[tables.delete] active reservation check failed", activeError);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
   if ((activeCount ?? 0) > 0) {
     return NextResponse.json(
-      { error: `this table has ${activeCount} active reservation(s) - cancel or move them first` },
+      { error: `у этого стола ${activeCount} активных бронь(ей) - сначала отмените или перенесите их` },
       { status: 409 }
     );
   }
@@ -149,15 +149,15 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     // toggle instead of silently losing data.
     if (error.code === "23503") {
       return NextResponse.json(
-        { error: "this table has reservation history and can't be deleted - mark it inactive instead" },
+        { error: "у этого стола есть история броней - его нельзя удалить, отметьте как недоступный" },
         { status: 409 }
       );
     }
     console.error("[tables.delete] delete failed", error);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
   if (!deletedCount) {
-    return NextResponse.json({ error: `table ${tableId} not found` }, { status: 404 });
+    return NextResponse.json({ error: `стол ${tableId} не найден` }, { status: 404 });
   }
 
   return new NextResponse(null, { status: 204 });

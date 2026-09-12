@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ALLOWED_STATUS_TRANSITIONS, type ReservationStatus } from "@/lib/reservations";
+import { ALLOWED_STATUS_TRANSITIONS, STATUS_LABELS_RU, type ReservationStatus } from "@/lib/reservations";
+import { guestsLabel } from "@/lib/ru";
+import { Combobox, MultiCombobox } from "@/components/Combobox";
 import type { Hall } from "./HallForm";
 import type { DiningTable } from "./TableForm";
 
@@ -66,10 +68,6 @@ export function ReservationEditModal({
   const hasContact = guestPhone.trim() || guestEmail.trim();
   const valid = guestName.trim() && hasContact && partySize > 0 && tableIds.length > 0;
 
-  function toggleTable(tableId: number) {
-    setTableIds((prev) => (prev.includes(tableId) ? prev.filter((id) => id !== tableId) : [...prev, tableId]));
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!valid) return;
@@ -90,7 +88,7 @@ export function ReservationEditModal({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Date</span>
+          <span className="font-medium text-ink">Дата</span>
           <input
             type="date"
             value={date}
@@ -99,7 +97,7 @@ export function ReservationEditModal({
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Time</span>
+          <span className="font-medium text-ink">Время</span>
           <input
             type="time"
             value={startTime}
@@ -111,7 +109,7 @@ export function ReservationEditModal({
 
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Duration (min)</span>
+          <span className="font-medium text-ink">Длительность (мин)</span>
           <input
             type="number"
             min={15}
@@ -122,7 +120,7 @@ export function ReservationEditModal({
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Party size</span>
+          <span className="font-medium text-ink">Гостей</span>
           <input
             type="number"
             min={1}
@@ -135,7 +133,7 @@ export function ReservationEditModal({
       </div>
 
       <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Guest name</span>
+        <span className="font-medium text-ink">Имя гостя</span>
         <input
           value={guestName}
           onChange={(e) => setGuestName(e.target.value)}
@@ -144,7 +142,7 @@ export function ReservationEditModal({
       </label>
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Phone</span>
+          <span className="font-medium text-ink">Телефон</span>
           <input
             value={guestPhone}
             onChange={(e) => setGuestPhone(e.target.value)}
@@ -162,63 +160,53 @@ export function ReservationEditModal({
       </div>
 
       <div className="border-t border-line pt-4">
-        <p className="mb-2 text-xs font-medium uppercase tracking-[0.1em] text-muted">Table(s)</p>
-        <select
-          value={hallId}
-          onChange={(e) => {
-            setHallId(Number(e.target.value));
-            setTableIds([]);
-          }}
-          className="mb-2 w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-claret"
-        >
-          {halls.map((h) => (
-            <option key={h.id} value={h.id}>
-              {h.name}
-            </option>
-          ))}
-        </select>
-        <div className="flex flex-wrap gap-2">
-          {hallTables.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => toggleTable(t.id)}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-                tableIds.includes(t.id) ? "border-claret bg-claret-tint text-claret" : "border-line text-ink hover:border-claret"
-              }`}
-            >
-              {t.label} <span className="text-xs opacity-70">({t.min_capacity}-{t.max_capacity})</span>
-            </button>
-          ))}
+        <p className="mb-2 text-xs font-medium uppercase tracking-[0.1em] text-muted">Стол(ы)</p>
+        <div className="mb-2">
+          <Combobox
+            ariaLabel="Зал"
+            options={halls.map((h) => ({ value: h.id, label: h.name }))}
+            value={hallId}
+            onChange={(id) => {
+              setHallId(id);
+              setTableIds([]);
+            }}
+          />
         </div>
+        <MultiCombobox
+          ariaLabel="Столы"
+          placeholder="Выберите стол(ы)…"
+          options={hallTables.map((t) => ({ value: t.id, label: `${t.label} (${t.min_capacity}–${t.max_capacity})` }))}
+          values={tableIds}
+          onChange={setTableIds}
+        />
         <p className={`mt-2 text-xs ${combinedCapacity < partySize ? "text-status-cancelled" : "text-muted"}`}>
-          Combined capacity: {combinedCapacity} {combinedCapacity < partySize && `(needs ${partySize})`}
+          Вместимость: {combinedCapacity} {combinedCapacity < partySize && `(нужно ${guestsLabel(partySize)})`}
         </p>
       </div>
 
       {allowedNextStatuses.length > 0 && (
         <div className="border-t border-line pt-4">
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.1em] text-muted">Status</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-[0.1em] text-muted">Статус</p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setStatus(reservation.status)}
-              className={`rounded-lg border px-3 py-1.5 text-sm capitalize transition-colors ${
+              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                 status === reservation.status ? "border-claret bg-claret-tint text-claret" : "border-line text-ink hover:border-claret"
               }`}
             >
-              {reservation.status} (current)
+              {STATUS_LABELS_RU[reservation.status]} (текущий)
             </button>
             {allowedNextStatuses.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setStatus(s)}
-                className={`rounded-lg border px-3 py-1.5 text-sm capitalize transition-colors ${
+                className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                   status === s ? "border-claret bg-claret-tint text-claret" : "border-line text-ink hover:border-claret"
                 }`}
               >
-                {s}
+                {STATUS_LABELS_RU[s]}
               </button>
             ))}
           </div>
@@ -231,7 +219,7 @@ export function ReservationEditModal({
         disabled={submitting || !valid}
         className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? "Saving…" : "Save changes"}
+        {submitting ? "Сохраняем…" : "Сохранить"}
       </button>
     </form>
   );

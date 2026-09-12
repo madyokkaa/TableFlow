@@ -32,16 +32,16 @@ export default function ForgotPasswordPage() {
     return (
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
         <div className="rounded-2xl border border-line bg-surface p-8 text-center">
-          <p className="font-display text-2xl text-ink text-balance">Check your inbox</p>
+          <p className="font-display text-2xl text-ink text-balance">Проверьте почту</p>
           <p className="mt-2 text-sm text-muted">
-            If <span className="text-ink">{email}</span> has a staff account, we&apos;ve sent a password reset
-            link to it.
+            Если у <span className="text-ink">{email}</span> есть учётная запись персонала, мы отправили на неё
+            ссылку для смены пароля.
           </p>
           <a
             href="/hostess/login"
             className="mt-5 inline-block text-sm text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
           >
-            Back to sign in
+            Назад ко входу
           </a>
         </div>
       </main>
@@ -51,8 +51,8 @@ export default function ForgotPasswordPage() {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">TableFlow · Staff</p>
-      <h1 className="mt-2 font-display text-3xl text-ink text-balance">Reset your password</h1>
-      <p className="mt-2 text-sm text-muted">We&apos;ll email you a link to set a new password.</p>
+      <h1 className="mt-2 font-display text-3xl text-ink text-balance">Восстановление пароля</h1>
+      <p className="mt-2 text-sm text-muted">Мы отправим на почту ссылку для установки нового пароля.</p>
 
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
         <label className="flex flex-col gap-1.5 text-sm">
@@ -71,13 +71,13 @@ export default function ForgotPasswordPage() {
           disabled={sending}
           className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
         >
-          {sending ? "Sending…" : "Send reset link"}
+          {sending ? "Отправляем…" : "Отправить ссылку"}
         </button>
         <a
           href="/hostess/login"
           className="text-center text-sm text-muted underline decoration-line underline-offset-4 transition-colors hover:text-claret"
         >
-          Back to sign in
+          Назад ко входу
         </a>
       </form>
     </main>

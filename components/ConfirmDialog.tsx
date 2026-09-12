@@ -9,7 +9,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   message,
-  confirmLabel = "Confirm",
+  confirmLabel = "Подтвердить",
   danger = false,
 }: {
   open: boolean;
@@ -30,7 +30,7 @@ export function ConfirmDialog({
       await onConfirm();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : "Что-то пошло не так.");
     } finally {
       setPending(false);
     }
@@ -47,7 +47,7 @@ export function ConfirmDialog({
           disabled={pending}
           className="inline-flex h-10 items-center justify-center rounded-lg border border-line px-4 text-sm font-medium text-ink transition-colors hover:bg-paper disabled:opacity-50"
         >
-          Cancel
+          Отмена
         </button>
         <button
           type="button"
@@ -57,7 +57,7 @@ export function ConfirmDialog({
             danger ? "bg-status-cancelled hover:brightness-90" : "bg-claret hover:bg-claret-strong"
           }`}
         >
-          {pending ? "Working…" : confirmLabel}
+          {pending ? "Выполняем…" : confirmLabel}
         </button>
       </div>
     </Modal>

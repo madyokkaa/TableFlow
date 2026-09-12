@@ -16,6 +16,11 @@ export type DiningTable = {
 };
 
 const SHAPES: DiningTable["shape"][] = ["rectangle", "round", "square"];
+const SHAPE_LABELS: Record<DiningTable["shape"], string> = {
+  rectangle: "Прямоугольный",
+  round: "Круглый",
+  square: "Квадратный",
+};
 
 export function TableForm({
   initial,
@@ -45,30 +50,30 @@ export function TableForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Label</span>
+        <span className="font-medium text-ink">Номер / название</span>
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           required
           maxLength={40}
           className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-          placeholder="12, VIP-1, Terrace A…"
+          placeholder="12, VIP-1, Терраса A…"
         />
       </label>
 
       <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Shape</span>
+        <span className="font-medium text-ink">Форма</span>
         <div className="flex gap-2">
           {SHAPES.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setShape(s)}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm capitalize transition-colors ${
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
                 shape === s ? "border-claret bg-claret-tint text-claret" : "border-line text-ink hover:border-claret"
               }`}
             >
-              {s}
+              {SHAPE_LABELS[s]}
             </button>
           ))}
         </div>
@@ -76,7 +81,7 @@ export function TableForm({
 
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Min seats</span>
+          <span className="font-medium text-ink">Мин. мест</span>
           <input
             type="number"
             min={1}
@@ -86,7 +91,7 @@ export function TableForm({
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Max seats</span>
+          <span className="font-medium text-ink">Макс. мест</span>
           <input
             type="number"
             min={minCapacity}
@@ -99,7 +104,7 @@ export function TableForm({
 
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-4 w-4 accent-claret" />
-        <span className="text-ink">Bookable (uncheck to hide from new reservations)</span>
+        <span className="text-ink">Доступен для бронирования (снимите, чтобы скрыть от новых броней)</span>
       </label>
 
       {error && <p className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">{error}</p>}
@@ -108,7 +113,7 @@ export function TableForm({
         disabled={submitting || !valid}
         className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? "Saving…" : initial ? "Save changes" : "Add table"}
+        {submitting ? "Сохраняем…" : initial ? "Сохранить" : "Добавить стол"}
       </button>
     </form>
   );
