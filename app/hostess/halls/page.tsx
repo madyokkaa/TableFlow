@@ -2,19 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseError } from "@/lib/api";
 import { AdminShell } from "@/components/hostess/AdminShell";
 import { Modal } from "@/components/Modal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { HallForm, type Hall } from "@/components/hostess/HallForm";
-
-async function parseError(res: Response): Promise<string> {
-  const body = await res.json().catch(() => ({}));
-  if (body.error === "validation_failed") {
-    return Object.values(body.details ?? {}).join(" ");
-  }
-  return body.error ?? "Something went wrong.";
-}
 
 function HallsPageContent() {
   const [halls, setHalls] = useState<Hall[] | null>(null);
@@ -39,7 +31,7 @@ function HallsPageContent() {
       }
       setHalls(await res.json());
     } catch {
-      setLoadError("Couldn't reach the server. Check your connection and try again.");
+      setLoadError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
       setHalls([]);
     } finally {
       setLoading(false);
@@ -97,15 +89,15 @@ function HallsPageContent() {
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">Floor plan</p>
-          <h1 className="mt-1 font-display text-3xl text-ink text-balance">Halls</h1>
+          <p className="text-xs uppercase tracking-[0.14em] text-muted">Схема зала</p>
+          <h1 className="mt-1 font-display text-3xl text-ink text-balance">Залы</h1>
         </div>
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
           className="inline-flex h-10 items-center justify-center rounded-lg bg-claret px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
         >
-          + New hall
+          + Новый зал
         </button>
       </div>
 
@@ -121,7 +113,7 @@ function HallsPageContent() {
         </p>
       ) : halls.length === 0 ? (
         <p className="rounded-xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
-          No halls yet. Create one to start adding tables.
+          Пока нет ни одного зала. Создайте зал, чтобы добавлять столы.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -135,21 +127,21 @@ function HallsPageContent() {
               </div>
               <div className="mt-auto flex gap-4 pt-2 text-sm">
                 <Link href={`/hostess/halls/${hall.id}`} className="text-claret underline decoration-claret/40 underline-offset-4 hover:text-claret-strong">
-                  Manage tables
+                  Управлять столами
                 </Link>
                 <button
                   type="button"
                   onClick={() => setEditingHall(hall)}
                   className="text-muted underline decoration-line underline-offset-4 hover:text-ink"
                 >
-                  Edit
+                  Изменить
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeletingHall(hall)}
                   className="text-status-cancelled underline decoration-status-cancelled/40 underline-offset-4 hover:brightness-90"
                 >
-                  Delete
+                  Удалить
                 </button>
               </div>
             </div>
@@ -157,11 +149,11 @@ function HallsPageContent() {
         </div>
       )}
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New hall">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Новый зал">
         <HallForm submitting={submitting} error={formError} onSubmit={handleCreate} />
       </Modal>
 
-      <Modal open={editingHall !== null} onClose={() => setEditingHall(null)} title="Edit hall">
+      <Modal open={editingHall !== null} onClose={() => setEditingHall(null)} title="Изменить зал">
         {editingHall && <HallForm initial={editingHall} submitting={submitting} error={formError} onSubmit={handleEdit} />}
       </Modal>
 
@@ -169,9 +161,9 @@ function HallsPageContent() {
         open={deletingHall !== null}
         onClose={() => setDeletingHall(null)}
         onConfirm={handleDelete}
-        title="Delete hall"
-        message={`Delete "${deletingHall?.name}"? This can't be undone. Halls with tables can't be deleted - remove the tables first.`}
-        confirmLabel="Delete"
+        title="Удаление зала"
+        message={`Удалить зал «${deletingHall?.name}»? Это действие нельзя отменить. Залы со столами удалить нельзя - сначала удалите столы.`}
+        confirmLabel="Удалить"
         danger
       />
     </>

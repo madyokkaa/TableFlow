@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthenticatedUser, requireStaff } from "@/lib/supabase/auth";
-import { RESERVATION_STATUSES, mapRpcError } from "@/lib/reservations";
+import { RESERVATION_STATUSES, STATUS_LABELS_RU, mapRpcError } from "@/lib/reservations";
 import { DEFAULT_DURATION_MINUTES } from "@/lib/scheduling";
 
 function todayIsoDate(): string {
@@ -12,7 +12,7 @@ function todayIsoDate(): string {
 export async function GET(request: NextRequest) {
   const staff = await requireStaff(request);
   if (!staff) {
-    return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -24,14 +24,17 @@ export async function GET(request: NextRequest) {
   if (hallIdParam) {
     hallId = Number(hallIdParam);
     if (!Number.isInteger(hallId)) {
-      return NextResponse.json({ error: "hall_id must be an integer" }, { status: 400 });
+      return NextResponse.json({ error: "hall_id должен быть целым числом" }, { status: 400 });
     }
   }
   if (status && !(RESERVATION_STATUSES as readonly string[]).includes(status)) {
-    return NextResponse.json({ error: `status must be one of ${RESERVATION_STATUSES.join(", ")}` }, { status: 400 });
+    return NextResponse.json(
+      { error: `статус должен быть одним из: ${RESERVATION_STATUSES.map((s) => STATUS_LABELS_RU[s]).join(", ")}` },
+      { status: 400 }
+    );
   }
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return NextResponse.json({ error: "date must be YYYY-MM-DD" }, { status: 400 });
+    return NextResponse.json({ error: "формат даты: ГГГГ-ММ-ДД" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -53,7 +56,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query;
   if (error) {
     console.error("[reservations.list] query failed", error);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
 
   let results = data ?? [];
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
   if (!user) {
-    return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
   const payload = await request.json().catch(() => ({}));
@@ -80,33 +83,33 @@ export async function POST(request: NextRequest) {
   >;
 
   const errors: Record<string, string> = {};
-  if (typeof table_id !== "number" || !Number.isInteger(table_id)) errors.table_id = "required";
-  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.date = "must be YYYY-MM-DD";
-  if (typeof start_time !== "string" || !/^\d{2}:\d{2}(:\d{2})?$/.test(start_time)) errors.start_time = "must be HH:MM";
+  if (typeof table_id !== "number" || !Number.isInteger(table_id)) errors.table_id = "обязательное поле";
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.date = "формат даты: ГГГГ-ММ-ДД";
+  if (typeof start_time !== "string" || !/^\d{2}:\d{2}(:\d{2})?$/.test(start_time)) errors.start_time = "формат времени: ЧЧ:ММ";
 
   if (typeof guest_name !== "string" || !guest_name.trim()) {
-    errors.guest_name = "required";
+    errors.guest_name = "обязательное поле";
   } else if (guest_name.length > 120) {
-    errors.guest_name = "must be at most 120 characters";
+    errors.guest_name = "не более 120 символов";
   }
   if (guest_phone !== undefined && guest_phone !== null && typeof guest_phone !== "string") {
-    errors.guest_phone = "must be a string";
+    errors.guest_phone = "должно быть строкой";
   } else if (typeof guest_phone === "string" && guest_phone.length > 30) {
-    errors.guest_phone = "must be at most 30 characters";
+    errors.guest_phone = "не более 30 символов";
   }
   if (guest_email !== undefined && guest_email !== null && typeof guest_email !== "string") {
-    errors.guest_email = "must be a string";
+    errors.guest_email = "должно быть строкой";
   } else if (typeof guest_email === "string" && guest_email.length > 255) {
-    errors.guest_email = "must be at most 255 characters";
+    errors.guest_email = "не более 255 символов";
   }
   if (!guest_phone && !guest_email && !errors.guest_phone && !errors.guest_email) {
-    errors.guest_phone = "guest_phone or guest_email is required";
+    errors.guest_phone = "укажите телефон или email";
   }
   if (typeof party_size !== "number" || !Number.isInteger(party_size) || party_size < 1 || party_size > 100) {
-    errors.party_size = "must be a positive integer (max 100)";
+    errors.party_size = "должно быть положительным целым числом (не более 100)";
   }
   if (typeof date === "string" && date < todayIsoDate()) {
-    errors.date = "cannot book a reservation in the past";
+    errors.date = "нельзя забронировать в прошлом";
   }
 
   if (Object.keys(errors).length > 0) {
@@ -122,14 +125,14 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
   if (tableError) {
     console.error("[reservations.create] table lookup failed", tableError);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
   if (!table || !table.is_active || table.manual_status === "out_of_service") {
-    return NextResponse.json({ error: `table ${table_id} is not available` }, { status: 404 });
+    return NextResponse.json({ error: `стол ${table_id} недоступен` }, { status: 404 });
   }
   if ((party_size as number) > table.max_capacity) {
     return NextResponse.json(
-      { error: "validation_failed", details: { party_size: `exceeds table capacity (${table.max_capacity})` } },
+      { error: "validation_failed", details: { party_size: `превышает вместимость стола (${table.max_capacity})` } },
       { status: 400 }
     );
   }
@@ -159,7 +162,7 @@ export async function POST(request: NextRequest) {
     .single();
   if (fetchError) {
     console.error("[reservations.create] fetch-after-create failed", fetchError);
-    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
 
   return NextResponse.json(reservation, { status: 201 });

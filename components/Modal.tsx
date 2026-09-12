@@ -33,7 +33,7 @@ export function Modal({
     >
       <div
         className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-xl"
-        style={{ animation: "form-enter 200ms ease-out" }}
+        style={{ animation: "modal-panel-in 200ms ease-out" }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -44,7 +44,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label="Закрыть"
             className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"
           >
             ✕

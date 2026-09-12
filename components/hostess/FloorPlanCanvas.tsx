@@ -2,26 +2,21 @@
 
 import { useRef, useState } from "react";
 import type { DiningTable } from "./TableForm";
+import { SHAPE_SIZE } from "@/lib/tableShapes";
 
 const DRAG_THRESHOLD_PX = 4;
 
-const SHAPE_SIZE: Record<DiningTable["shape"], { w: number; h: number; className: string }> = {
-  round: { w: 84, h: 84, className: "rounded-full" },
-  square: { w: 84, h: 84, className: "rounded-xl" },
-  rectangle: { w: 120, h: 72, className: "rounded-xl" },
-};
-
 function statusStyle(table: DiningTable, reservedToday: boolean): { label: string; className: string } {
   if (table.manual_status === "out_of_service") {
-    return { label: "Out of service", className: "border-status-noshow bg-status-noshow-tint text-status-noshow" };
+    return { label: "Не работает", className: "border-status-noshow bg-status-noshow-tint text-status-noshow" };
   }
   if (table.manual_status === "occupied") {
-    return { label: "Occupied", className: "border-status-cancelled bg-status-cancelled-tint text-status-cancelled" };
+    return { label: "Занят", className: "border-status-cancelled bg-status-cancelled-tint text-status-cancelled" };
   }
   if (reservedToday) {
-    return { label: "Reserved today", className: "border-status-pending bg-status-pending-tint text-status-pending" };
+    return { label: "Забронирован сегодня", className: "border-status-pending bg-status-pending-tint text-status-pending" };
   }
-  return { label: "Free", className: "border-status-confirmed bg-status-confirmed-tint text-status-confirmed" };
+  return { label: "Свободен", className: "border-status-confirmed bg-status-confirmed-tint text-status-confirmed" };
 }
 
 export function FloorPlanCanvas({
@@ -103,7 +98,7 @@ export function FloorPlanCanvas({
     >
       {tables.length === 0 && (
         <p className="absolute inset-0 flex items-center justify-center text-sm text-muted">
-          Add a table to place it here.
+          Добавьте стол, чтобы разместить его здесь.
         </p>
       )}
       {tables.map((table) => {

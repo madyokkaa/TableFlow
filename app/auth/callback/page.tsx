@@ -43,7 +43,7 @@ export default function AuthCallbackPage() {
     });
 
     const timeout = setTimeout(() => {
-      if (!redirected) setError("This link expired or was already used. Request a new one.");
+      if (!redirected) setError("Эта ссылка истекла или уже была использована. Запросите новую.");
     }, 8000);
 
     return () => {
@@ -56,11 +56,11 @@ export default function AuthCallbackPage() {
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 text-center">
       {error ? (
         <>
-          <p className="font-display text-2xl text-ink">That link didn&apos;t work</p>
+          <p className="font-display text-2xl text-ink">Ссылка не сработала</p>
           <p className="mt-2 text-sm text-status-cancelled">{error}</p>
         </>
       ) : (
-        <p className="text-sm text-muted">Signing you in…</p>
+        <p className="text-sm text-muted">Выполняем вход…</p>
       )}
     </main>
   );

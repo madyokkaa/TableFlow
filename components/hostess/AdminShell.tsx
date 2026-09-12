@@ -5,10 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { unlockAudio } from "@/lib/notificationSound";
+import { SoundToggle } from "./SoundToggle";
 
 const NAV = [
-  { href: "/hostess", label: "Reservations" },
-  { href: "/hostess/halls", label: "Halls" },
+  { href: "/hostess", label: "Брони" },
+  { href: "/hostess/halls", label: "Залы" },
 ];
 
 /** Wraps every protected /hostess/* page: redirects to /hostess/login if
@@ -40,6 +42,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [router]);
 
+  useEffect(() => {
+    // A new-reservation sound needs an AudioContext unlocked by a real user
+    // gesture first - the sound toggle click covers that, but a hostess who
+    // never touches it should still hear notifications after any first tap
+    // on the page.
+    function handleFirstClick() {
+      unlockAudio();
+    }
+    window.addEventListener("pointerdown", handleFirstClick, { once: true });
+    return () => window.removeEventListener("pointerdown", handleFirstClick);
+  }, []);
+
   async function handleSignOut() {
     const supabase = createBrowserSupabaseClient();
     await supabase.auth.signOut();
@@ -62,7 +76,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-4">
           <div className="flex items-center gap-8">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">TableFlow · Staff</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">TableFlow · Персонал</p>
             <nav className="flex gap-1">
               {NAV.map((item) => {
                 const active = item.href === "/hostess" ? pathname === "/hostess" : pathname.startsWith(item.href);
@@ -80,13 +94,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               })}
             </nav>
           </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="text-sm text-muted underline decoration-line underline-offset-4 transition-colors hover:text-ink"
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            <SoundToggle />
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="text-sm text-muted underline decoration-line underline-offset-4 transition-colors hover:text-ink"
+            >
+              Выйти
+            </button>
+          </div>
         </div>
       </header>
       <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</div>
