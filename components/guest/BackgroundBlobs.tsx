@@ -27,7 +27,13 @@ export function BackgroundBlobs() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    // No overflow-hidden here on purpose: these blobs are sized/positioned
+    // to bleed past the content column's own edges, and the gradient only
+    // starts fading in its outer 30% (`transparent 70%`) - clipping right at
+    // this container's boundary cut them off while still mostly opaque,
+    // reading as a hard edge instead of a soft one. <body> carries the
+    // overflow-x safety net instead, at the true viewport edge.
+    <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
       {BLOBS.map((blob, i) => (
         <motion.div
           key={i}

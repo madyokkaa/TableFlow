@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { motion } from "motion/react";
 import { formatDateTime, guestsLabel } from "@/lib/ru";
+import { formatPhoneInput } from "@/lib/phone";
+import { isValidEmail } from "@/lib/validation";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import type { DiningTable } from "@/components/hostess/TableForm";
 
@@ -30,15 +32,18 @@ export function ConfirmStep({
   defaultEmail?: string;
 }) {
   const [name, setName] = useState(defaultName);
-  const [phone, setPhone] = useState(defaultPhone);
+  const [phone, setPhone] = useState(() => formatPhoneInput(defaultPhone));
   const [email, setEmail] = useState(defaultEmail);
+  const [emailTouched, setEmailTouched] = useState(false);
 
   const hasContact = phone.trim().length > 0 || email.trim().length > 0;
-  const canSubmit = name.trim().length > 0 && hasContact && !submitting;
+  const emailValid = email.trim().length === 0 || isValidEmail(email);
+  const canSubmit = name.trim().length > 0 && hasContact && emailValid && !submitting;
   const prefilled = Boolean(defaultName || defaultPhone || defaultEmail);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setEmailTouched(true);
     if (!canSubmit) return;
     onSubmit({ name: name.trim(), phone: phone.trim(), email: email.trim() });
   }
@@ -75,11 +80,13 @@ export function ConfirmStep({
           <span className="font-medium text-ink">Телефон</span>
           <input
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            maxLength={30}
+            onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
+            type="tel"
+            inputMode="tel"
+            maxLength={18}
             autoComplete="tel"
             className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-            placeholder="+7 900 000-00-00"
+            placeholder="+7 (900) 000-00-00"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
@@ -87,14 +94,18 @@ export function ConfirmStep({
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setEmailTouched(true)}
             type="email"
             maxLength={255}
             autoComplete="email"
-            className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
+            className={`rounded-lg border bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret ${
+              emailTouched && !emailValid ? "border-status-cancelled" : "border-line"
+            }`}
             placeholder="ivan@example.com"
           />
         </label>
       </div>
+      {emailTouched && !emailValid && <p className="-mt-2 text-xs text-status-cancelled">Проверьте формат email</p>}
       {!hasContact && (
         <p className="-mt-2 text-xs text-muted">Укажите телефон или email, чтобы мы могли с вами связаться.</p>
       )}

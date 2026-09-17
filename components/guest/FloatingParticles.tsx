@@ -22,7 +22,7 @@ export function FloatingParticles() {
   if (reduceMotion) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
       {PARTICLES.map((p, i) => (
         <motion.span
           key={i}

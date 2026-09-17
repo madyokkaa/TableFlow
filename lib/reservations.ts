@@ -1,3 +1,22 @@
+// The free-form "Other" option in both cancellation-reason comboboxes -
+// picking it reveals a text field whose contents become the stored reason.
+export const OTHER_REASON = "Другое";
+
+export const HOST_CANCELLATION_REASONS = [
+  "Гость отменил по телефону",
+  "Гость не подтвердил бронь",
+  "Нет мест / технический сбой в расписании",
+  "Дубликат брони",
+  "Подозрение на спам/фейковую бронь",
+] as const;
+
+export const GUEST_CANCELLATION_REASONS = [
+  "Планы изменились",
+  "Нашёл другое место",
+  "Ошибся с датой/временем при бронировании",
+  "Не подходит вместимость (слишком много или мало гостей)",
+] as const;
+
 export const RESERVATION_STATUSES = ["pending", "confirmed", "cancelled", "no-show", "completed"] as const;
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 

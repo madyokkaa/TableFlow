@@ -150,9 +150,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <NavLinks />
         </nav>
         <div className="flex flex-col gap-1 border-t border-line pt-3">
-          <div className="px-3 py-1">
-            <SoundToggle />
-          </div>
+          <SoundToggle />
           <button
             type="button"
             onClick={handleSignOut}

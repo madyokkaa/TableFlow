@@ -1,8 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion } from "motion/react";
+import { Check, X } from "lucide-react";
 import { ALLOWED_STATUS_TRANSITIONS, STATUS_LABELS_RU, type ReservationStatus } from "@/lib/reservations";
 import { guestsLabel } from "@/lib/ru";
+import { formatPhoneInput } from "@/lib/phone";
+import { isValidEmail } from "@/lib/validation";
 import { Combobox, MultiCombobox } from "@/components/Combobox";
 import type { Hall } from "./HallForm";
 import type { DiningTable } from "./TableForm";
@@ -17,6 +21,8 @@ export type Reservation = {
   guest_phone: string | null;
   guest_email: string | null;
   status: ReservationStatus;
+  cancellation_reason: string | null;
+  cancelled_by: "guest" | "host" | null;
   reservation_tables: { table_id: number; dining_tables: { id: number; label: string; hall_id: number; halls: { id: number; name: string } } }[];
 };
 
@@ -27,6 +33,8 @@ export function ReservationEditModal({
   submitting,
   error,
   onSubmit,
+  onAccept,
+  onRequestReject,
 }: {
   reservation: Reservation;
   halls: Hall[];
@@ -44,6 +52,11 @@ export function ReservationEditModal({
     status: ReservationStatus;
     table_ids: number[];
   }) => void;
+  /** One-click accept (pending -> confirmed), no confirmation needed. Omit
+   * to hide the button (e.g. the reservation isn't pending). */
+  onAccept?: () => void;
+  /** Opens the reject-with-reason confirmation. Omit to hide the button. */
+  onRequestReject?: () => void;
 }) {
   const currentHallId = reservation.reservation_tables[0]?.dining_tables.hall_id ?? halls[0]?.id ?? 0;
 
@@ -52,8 +65,9 @@ export function ReservationEditModal({
   const [durationMinutes, setDurationMinutes] = useState(reservation.duration_minutes);
   const [partySize, setPartySize] = useState(reservation.party_size);
   const [guestName, setGuestName] = useState(reservation.guest_name);
-  const [guestPhone, setGuestPhone] = useState(reservation.guest_phone ?? "");
+  const [guestPhone, setGuestPhone] = useState(formatPhoneInput(reservation.guest_phone ?? ""));
   const [guestEmail, setGuestEmail] = useState(reservation.guest_email ?? "");
+  const [emailTouched, setEmailTouched] = useState(false);
   const [status, setStatus] = useState<ReservationStatus>(reservation.status);
   const [hallId, setHallId] = useState(currentHallId);
   const [tableIds, setTableIds] = useState<number[]>(reservation.reservation_tables.map((rt) => rt.table_id));
@@ -66,10 +80,12 @@ export function ReservationEditModal({
 
   const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[reservation.status] ?? [];
   const hasContact = guestPhone.trim() || guestEmail.trim();
-  const valid = guestName.trim() && hasContact && partySize > 0 && tableIds.length > 0;
+  const emailValid = guestEmail.trim().length === 0 || isValidEmail(guestEmail);
+  const valid = guestName.trim() && hasContact && emailValid && partySize > 0 && tableIds.length > 0;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setEmailTouched(true);
     if (!valid) return;
     onSubmit({
       date,
@@ -86,6 +102,46 @@ export function ReservationEditModal({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {(onAccept || onRequestReject) && (
+        <div className="flex gap-3">
+          {onAccept && (
+            <motion.button
+              type="button"
+              onClick={onAccept}
+              disabled={submitting}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-status-confirmed px-4 text-sm font-medium text-white transition-colors duration-150 ease-out hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+              Принять
+            </motion.button>
+          )}
+          {onRequestReject && (
+            <motion.button
+              type="button"
+              onClick={onRequestReject}
+              disabled={submitting}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-status-cancelled px-4 text-sm font-medium text-white transition-colors duration-150 ease-out hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <X className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+              Отклонить
+            </motion.button>
+          )}
+        </div>
+      )}
+
+      {reservation.status === "cancelled" && reservation.cancellation_reason && (
+        <p className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">
+          {reservation.cancelled_by === "guest" ? "Гость отменил: " : reservation.cancelled_by === "host" ? "Персонал отклонил: " : "Причина: "}
+          {reservation.cancellation_reason}
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-ink">Дата</span>
@@ -145,7 +201,11 @@ export function ReservationEditModal({
           <span className="font-medium text-ink">Телефон</span>
           <input
             value={guestPhone}
-            onChange={(e) => setGuestPhone(e.target.value)}
+            onChange={(e) => setGuestPhone(formatPhoneInput(e.target.value))}
+            type="tel"
+            inputMode="tel"
+            maxLength={18}
+            placeholder="+7 (900) 000-00-00"
             className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
           />
         </label>
@@ -154,8 +214,13 @@ export function ReservationEditModal({
           <input
             value={guestEmail}
             onChange={(e) => setGuestEmail(e.target.value)}
-            className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
+            onBlur={() => setEmailTouched(true)}
+            type="email"
+            className={`rounded-lg border bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret ${
+              emailTouched && !emailValid ? "border-status-cancelled" : "border-line"
+            }`}
           />
+          {emailTouched && !emailValid && <span className="text-xs text-status-cancelled">Проверьте формат email</span>}
         </label>
       </div>
 
