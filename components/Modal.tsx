@@ -34,14 +34,14 @@ export function Modal({
       role="presentation"
     >
       <div
-        className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-xl"
-        style={{ animation: "modal-panel-in 200ms ease-out" }}
+        className="flex w-full max-w-lg flex-col rounded-2xl border border-line bg-surface shadow-xl"
+        style={{ animation: "modal-panel-in 200ms ease-out", maxHeight: "min(85dvh, 100%)" }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="flex shrink-0 items-center justify-between gap-4 p-6 pb-4">
           <h2 className="font-display text-xl text-ink">{title}</h2>
           <motion.button
             type="button"
@@ -50,12 +50,12 @@ export function Modal({
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.92 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-paper hover:text-ink"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-paper hover:text-ink"
           >
             <X className="h-[18px] w-[18px]" strokeWidth={1.75} />
           </motion.button>
         </div>
-        {children}
+        <div className="overflow-y-auto px-6 pb-6">{children}</div>
       </div>
     </div>
   );

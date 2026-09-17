@@ -4,16 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Plus } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
-import { formatDateLong } from "@/lib/ru";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { AdminShell } from "@/components/hostess/AdminShell";
 import { Modal } from "@/components/Modal";
-
-type StaffMember = {
-  user_id: string;
-  email: string | null;
-  active: boolean;
-  created_at: string;
-};
+import { ChangePasswordCard } from "@/components/hostess/ChangePasswordCard";
+import { StaffRow, type StaffMember } from "@/components/hostess/StaffRow";
 
 function AddStaffForm({
   submitting,
@@ -81,11 +76,18 @@ function StaffPageContent() {
   const [staff, setStaff] = useState<StaffMember[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successNote, setSuccessNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    createBrowserSupabaseClient()
+      .auth.getSession()
+      .then(({ data }) => setMyUserId(data.session?.user.id ?? null));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,6 +157,8 @@ function StaffPageContent() {
         </motion.button>
       </div>
 
+      <ChangePasswordCard />
+
       {successNote && (
         <p className="mb-4 rounded-xl border border-status-confirmed/40 bg-status-confirmed-tint px-4 py-3 text-sm text-status-confirmed">
           {successNote}
@@ -174,23 +178,7 @@ function StaffPageContent() {
       ) : (
         <div className="flex flex-col divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
           {staff.map((member) => (
-            <div
-              key={member.user_id}
-              className="flex flex-wrap items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-paper/60"
-            >
-              <div className="min-w-[200px] flex-1 text-sm font-medium text-ink">{member.email ?? "—"}</div>
-              <div className="text-xs text-muted">С {formatDateLong(member.created_at.slice(0, 10))}</div>
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-                  member.active
-                    ? "bg-status-confirmed-tint text-status-confirmed"
-                    : "bg-status-noshow-tint text-status-noshow"
-                }`}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-                {member.active ? "Активен" : "Отключён"}
-              </span>
-            </div>
+            <StaffRow key={member.user_id} member={member} isSelf={member.user_id === myUserId} onChanged={load} />
           ))}
         </div>
       )}

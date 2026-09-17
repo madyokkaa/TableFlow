@@ -9,9 +9,9 @@ import { apiFetch, parseError } from "@/lib/api";
 import { formatDateTime, guestsLabel } from "@/lib/ru";
 import { restaurantTodayIso } from "@/lib/scheduling";
 import { StatusPill } from "@/components/StatusPill";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { CancelReservationDialog } from "@/components/CancelReservationDialog";
 import { BackgroundBlobs } from "@/components/guest/BackgroundBlobs";
-import type { ReservationStatus } from "@/lib/reservations";
+import { GUEST_CANCELLATION_REASONS, type ReservationStatus } from "@/lib/reservations";
 
 type MyReservation = {
   id: number;
@@ -19,6 +19,8 @@ type MyReservation = {
   start_time: string;
   party_size: number;
   status: ReservationStatus;
+  cancellation_reason: string | null;
+  cancelled_by: "guest" | "host" | null;
   reservation_tables: { dining_tables: { label: string; halls: { name: string } } }[];
 };
 
@@ -34,6 +36,16 @@ function ReservationRow({
   const place = reservation.reservation_tables
     .map((rt) => `${rt.dining_tables.halls.name} · ${rt.dining_tables.label}`)
     .join(", ");
+  // The host's own reason for rejecting a booking is internal - a guest
+  // only ever sees the fact that the restaurant cancelled it, never why.
+  const cancellationNote =
+    reservation.status === "cancelled"
+      ? reservation.cancelled_by === "host"
+        ? "Отменено рестораном"
+        : reservation.cancelled_by === "guest" && reservation.cancellation_reason
+          ? reservation.cancellation_reason
+          : null
+      : null;
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-surface px-4 py-3">
       <div className="min-w-[140px]">
@@ -43,6 +55,7 @@ function ReservationRow({
         <p className="text-xs text-muted">
           {place || "—"} · {guestsLabel(reservation.party_size)}
         </p>
+        {cancellationNote && <p className="mt-0.5 text-xs text-status-cancelled">{cancellationNote}</p>}
       </div>
       <StatusPill status={reservation.status} />
       {canCancel && (
@@ -70,7 +83,9 @@ function AccountContent({ session }: { session: Session }) {
     // route needed just to read them back.
     const { data, error } = await supabase
       .from("reservations")
-      .select("id, date, start_time, party_size, status, reservation_tables(dining_tables(label, halls(name)))")
+      .select(
+        "id, date, start_time, party_size, status, cancellation_reason, cancelled_by, reservation_tables(dining_tables(label, halls(name)))"
+      )
       .eq("guest_user_id", session.user.id)
       .order("date", { ascending: false })
       .order("start_time", { ascending: false });
@@ -87,9 +102,12 @@ function AccountContent({ session }: { session: Session }) {
     load();
   }, [load]);
 
-  async function handleCancel() {
+  async function handleCancel(reason: string | null) {
     if (!cancelling) return;
-    const res = await apiFetch(`/api/reservations/${cancelling.id}/cancel`, { method: "POST" });
+    const res = await apiFetch(`/api/reservations/${cancelling.id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
     if (!res.ok) {
       throw new Error(await parseError(res));
     }
@@ -148,14 +166,14 @@ function AccountContent({ session }: { session: Session }) {
         </div>
       )}
 
-      <ConfirmDialog
+      <CancelReservationDialog
         open={cancelling !== null}
         onClose={() => setCancelling(null)}
         onConfirm={handleCancel}
         title="Отмена брони"
         message="Отменить эту бронь? Это действие нельзя отменить."
+        reasons={GUEST_CANCELLATION_REASONS}
         confirmLabel="Отменить бронь"
-        danger
       />
     </div>
   );

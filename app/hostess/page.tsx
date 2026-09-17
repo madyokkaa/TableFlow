@@ -5,13 +5,19 @@ import { apiFetch, parseError } from "@/lib/api";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useReservationsRealtime, type ReservationChangeEvent, type RealtimeStatus } from "@/hooks/useReservationsRealtime";
 import { playNotificationSound } from "@/lib/notificationSound";
-import { RESERVATION_STATUSES, STATUS_LABELS_RU, type ReservationStatus } from "@/lib/reservations";
+import {
+  ALLOWED_STATUS_TRANSITIONS,
+  HOST_CANCELLATION_REASONS,
+  RESERVATION_STATUSES,
+  STATUS_LABELS_RU,
+  type ReservationStatus,
+} from "@/lib/reservations";
 import { guestsLabel } from "@/lib/ru";
 import { restaurantTodayIso } from "@/lib/scheduling";
 import { Combobox } from "@/components/Combobox";
 import { AdminShell } from "@/components/hostess/AdminShell";
 import { Modal } from "@/components/Modal";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { CancelReservationDialog } from "@/components/CancelReservationDialog";
 import { StatusPill } from "@/components/StatusPill";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
@@ -29,7 +35,7 @@ function ReservationsPageContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
-  const [cancellingReservation, setCancellingReservation] = useState<Reservation | null>(null);
+  const [rejectingReservation, setRejectingReservation] = useState<Reservation | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [highlightedIds, setHighlightedIds] = useState<Set<number>>(new Set());
@@ -180,15 +186,33 @@ function ReservationsPageContent() {
     load();
   }
 
-  async function handleCancel() {
-    if (!cancellingReservation) return;
-    const res = await apiFetch(`/api/reservations/${cancellingReservation.id}`, {
+  async function handleAccept() {
+    if (!editingReservation) return;
+    setSubmitting(true);
+    setFormError(null);
+    const res = await apiFetch(`/api/reservations/${editingReservation.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ status: "cancelled" }),
+      body: JSON.stringify({ status: "confirmed" }),
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      setFormError(await parseError(res));
+      return;
+    }
+    setEditingReservation(null);
+    load();
+  }
+
+  async function handleReject(reason: string | null) {
+    if (!rejectingReservation) return;
+    const res = await apiFetch(`/api/reservations/${rejectingReservation.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "cancelled", cancellation_reason: reason }),
     });
     if (!res.ok) {
       throw new Error(await parseError(res));
     }
+    setEditingReservation(null);
     load();
   }
 
@@ -258,7 +282,6 @@ function ReservationsPageContent() {
               const tableLabels = reservation.reservation_tables
                 .map((rt) => `${rt.dining_tables.halls.name} · ${rt.dining_tables.label}`)
                 .join(", ");
-              const canCancel = ["pending", "confirmed"].includes(reservation.status);
               return (
                 <div
                   key={reservation.id}
@@ -275,6 +298,12 @@ function ReservationsPageContent() {
                       {reservation.guest_name} <span className="text-muted">· {guestsLabel(reservation.party_size)}</span>
                     </p>
                     <p className="text-xs text-muted">{reservation.guest_phone || reservation.guest_email}</p>
+                    {reservation.status === "cancelled" && reservation.cancellation_reason && (
+                      <p className="mt-0.5 text-xs text-status-cancelled">
+                        {reservation.cancelled_by === "guest" ? "Гость: " : "Персонал: "}
+                        {reservation.cancellation_reason}
+                      </p>
+                    )}
                   </div>
                   <StatusPill status={reservation.status} />
                   <div className="flex shrink-0 gap-3 text-sm">
@@ -285,15 +314,6 @@ function ReservationsPageContent() {
                     >
                       Изменить
                     </button>
-                    {canCancel && (
-                      <button
-                        type="button"
-                        onClick={() => setCancellingReservation(reservation)}
-                        className="text-status-cancelled underline decoration-status-cancelled/40 underline-offset-4 hover:brightness-90"
-                      >
-                        Отменить
-                      </button>
-                    )}
                   </div>
                 </div>
               );
@@ -314,18 +334,24 @@ function ReservationsPageContent() {
             submitting={submitting}
             error={formError}
             onSubmit={handleEdit}
+            onAccept={editingReservation.status === "pending" ? handleAccept : undefined}
+            onRequestReject={
+              (ALLOWED_STATUS_TRANSITIONS[editingReservation.status] ?? []).includes("cancelled")
+                ? () => setRejectingReservation(editingReservation)
+                : undefined
+            }
           />
         )}
       </Modal>
 
-      <ConfirmDialog
-        open={cancellingReservation !== null}
-        onClose={() => setCancellingReservation(null)}
-        onConfirm={handleCancel}
-        title="Отмена брони"
-        message={`Отменить бронь для «${cancellingReservation?.guest_name}»? Стол снова станет доступен для новых броней.`}
-        confirmLabel="Отменить бронь"
-        danger
+      <CancelReservationDialog
+        open={rejectingReservation !== null}
+        onClose={() => setRejectingReservation(null)}
+        onConfirm={handleReject}
+        title="Отклонение брони"
+        message={`Отклонить бронь для «${rejectingReservation?.guest_name}»? Стол снова станет доступен для новых броней.`}
+        reasons={HOST_CANCELLATION_REASONS}
+        confirmLabel="Отклонить бронь"
       />
     </>
   );

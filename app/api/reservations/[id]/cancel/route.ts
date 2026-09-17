@@ -20,6 +20,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ error: "некорректный ID брони" }, { status: 400 });
   }
 
+  const payload = await request.json().catch(() => ({}));
+  const { reason } = payload as { reason?: unknown };
+  if (reason !== undefined && reason !== null && typeof reason !== "string") {
+    return NextResponse.json({ error: "validation_failed", details: { reason: "должно быть строкой" } }, { status: 400 });
+  }
+  if (typeof reason === "string" && reason.length > 500) {
+    return NextResponse.json({ error: "validation_failed", details: { reason: "не более 500 символов" } }, { status: 400 });
+  }
+
   const admin = createAdminClient();
   const { data: reservation, error: lookupError } = await admin
     .from("reservations")
@@ -59,6 +68,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if (rpcError) {
     const mapped = mapRpcError(rpcError);
     return NextResponse.json(mapped.body, { status: mapped.status });
+  }
+
+  // Best-effort metadata, not part of the state machine the RPC/trigger
+  // enforce - a failure here would be odd but shouldn't undo an otherwise
+  // successful cancellation.
+  const { error: reasonError } = await admin
+    .from("reservations")
+    .update({ cancellation_reason: (reason as string | undefined)?.trim() || null, cancelled_by: "guest" })
+    .eq("id", reservationId);
+  if (reasonError) {
+    console.error("[reservations.cancel] saving cancellation reason failed", reasonError);
   }
 
   return NextResponse.json({ id: reservationId, status: "cancelled" });

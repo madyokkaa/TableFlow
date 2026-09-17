@@ -30,6 +30,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     guest_email,
     status,
     table_ids,
+    cancellation_reason,
   } = payload as Record<string, unknown>;
 
   const supabase = createAdminClient();
@@ -79,6 +80,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
   if (guest_email !== undefined && guest_email !== null && typeof guest_email !== "string") {
     errors.guest_email = "должно быть строкой";
+  }
+  if (cancellation_reason !== undefined && cancellation_reason !== null && typeof cancellation_reason !== "string") {
+    errors.cancellation_reason = "должно быть строкой";
+  } else if (typeof cancellation_reason === "string" && cancellation_reason.length > 500) {
+    errors.cancellation_reason = "не более 500 символов";
   }
 
   let nextStatus: ReservationStatus | undefined;
@@ -157,6 +163,18 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (rpcError) {
     const mapped = mapRpcError(rpcError);
     return NextResponse.json(mapped.body, { status: mapped.status });
+  }
+
+  // Cancellation metadata isn't part of the RPC's state machine - a plain
+  // follow-up write, only when this call actually cancelled the booking.
+  if (nextStatus === "cancelled") {
+    const { error: reasonError } = await supabase
+      .from("reservations")
+      .update({ cancellation_reason: (cancellation_reason as string | undefined)?.trim() || null, cancelled_by: "host" })
+      .eq("id", reservationId);
+    if (reasonError) {
+      console.error("[reservations.update] saving cancellation reason failed", reasonError);
+    }
   }
 
   const { data: updated, error: fetchError } = await supabase

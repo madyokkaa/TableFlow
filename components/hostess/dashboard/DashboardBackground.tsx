@@ -18,7 +18,10 @@ export function DashboardBackground() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    // No overflow-hidden here on purpose - see BackgroundBlobs.tsx for why
+    // clipping a still-opaque gradient at this container's edge reads as a
+    // hard cut instead of a fade; <body> carries the overflow-x safety net.
+    <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
       {BLOBS.map((blob, i) => (
         <motion.div
           key={i}
