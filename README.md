@@ -1,127 +1,137 @@
 # TableFlow
 
-Restaurant table-booking app: a guest-facing visual booking flow and a
-staff admin panel for managing halls, tables, and reservations in real
-time.
+Сервис бронирования столиков в ресторане: визуальное бронирование для
+гостей и панель администратора для персонала — управление залами,
+столиками и бронями в реальном времени.
 
-Built with Next.js (App Router, TypeScript) and Supabase (Postgres, Auth,
+Построен на Next.js (App Router, TypeScript) и Supabase (Postgres, Auth,
 Realtime, Row Level Security).
 
-## Features
+## Возможности
 
-**Guest booking** (`/`)
-- Interactive visual floor plan — pick a table by clicking its shape on the
-  actual layout of the hall
-- Compact calendar date picker and a discrete-stop time slider (dims
-  already-booked times)
-- One continuous table → date → time → confirm flow with animated step
-  transitions
-- Passwordless sign-in via a magic link (Supabase Auth OTP)
+**Бронирование для гостя** (`/`)
+- Интерактивная визуальная схема зала — стол выбирается кликом по его
+  форме прямо на плане помещения
+- Компактный календарь и слайдер времени с дискретными шагами (уже
+  занятые слоты затемняются)
+- Единый сценарий стол → дата → время → подтверждение с анимированными
+  переходами между шагами
+- Вход без пароля — по magic-link на почту (Supabase Auth OTP)
+- Возможность бронировать анонимно, без создания аккаунта
 
-**Hostess panel** (`/hostess`)
-- Email + password sign-in, with a forgot-password / reset-password flow
-- Hall & table management, including a drag-and-drop floor plan editor
-  (shape, seat range, manual occupied/out-of-service override)
-- Reservation list with filters, full editing (time, table, party size,
-  contact info, multi-table combining for large parties), and status
-  transitions (confirmed / cancelled / no-show / completed)
-- Live updates over Supabase Realtime (no polling) — a new booking appears
-  and pings without a page refresh, with a sound toggle
-- Double-booking is impossible by construction: a Postgres `EXCLUDE`
-  constraint on table + time range rejects the conflicting write directly
-  at the database layer, not just in application code
+**Панель персонала** (`/hostess`)
+- Вход по email + паролю, восстановление и сброс пароля
+- Управление залами и столиками, включая редактор схемы зала
+  drag-and-drop (форма, диапазон мест, ручной статус «занято» /
+  «не обслуживается»)
+- Список броней с фильтрами, полным редактированием (время, стол,
+  количество гостей, контакты, объединение нескольких столиков для
+  больших компаний) и сменой статуса (подтверждена / отменена /
+  неявка / завершена)
+- Живые обновления через Supabase Realtime (без polling) — новая бронь
+  появляется и подаёт звуковой сигнал без перезагрузки страницы
+- Управление доступом сотрудников: добавление новых администраторов
+  прямо из панели
+- Двойное бронирование невозможно в принципе: ограничение Postgres
+  `EXCLUDE` на пересечение стола и временного диапазона отклоняет
+  конфликтующую запись на уровне базы данных, а не только в коде
+  приложения
 
-The whole interface is in Russian; dates/times are formatted accordingly.
+Весь интерфейс на русском языке; даты и время форматируются
+соответствующим образом.
 
-## Stack
+## Стек
 
 - **Next.js 16** (App Router) + **TypeScript**, **Tailwind CSS v4**
-- **Supabase**: Postgres, Auth (magic link + email/password), Realtime
+- **Supabase**: Postgres, Auth (magic-link + email/пароль), Realtime
   (Postgres Changes), Row Level Security
-- **Vitest** for integration tests (run against a real Supabase project,
-  not mocks)
+- **Vitest** для интеграционных тестов (запускаются на реальном проекте
+  Supabase, без моков), **Playwright** для e2e
 
-## Getting started
+## Быстрый старт
 
-### 1. Supabase project
+### 1. Проект Supabase
 
-Create a project at [supabase.com](https://supabase.com), then copy
-`.env.example` to `.env.local` and fill in:
+Создайте проект на [supabase.com](https://supabase.com), затем скопируйте
+`.env.example` в `.env.local` и заполните:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=          # Project Settings -> API
 NEXT_PUBLIC_SUPABASE_ANON_KEY=     # Project Settings -> API
-SUPABASE_SERVICE_ROLE_KEY=         # Project Settings -> API (server-only, bypasses RLS)
-SUPABASE_DB_URL=                   # Project Settings -> Database -> Connection string -> Session pooler (port 5432)
+SUPABASE_SERVICE_ROLE_KEY=         # Project Settings -> API (только сервер, обходит RLS)
+SUPABASE_DB_URL=                   # Project Settings -> Database -> Connection string -> Session pooler (порт 5432)
 ```
 
-`SUPABASE_DB_URL` must use the **session pooler** (port 5432) — the
-transaction pooler (6543) doesn't support the DDL statements in the
-migrations reliably.
+`SUPABASE_DB_URL` обязательно должен использовать **session pooler**
+(порт 5432) — transaction pooler (6543) не гарантирует поддержку DDL из
+миграций.
 
-### 2. Install and migrate
+### 2. Установка и миграции
 
 ```bash
 npm install
 npx supabase db push --db-url "$SUPABASE_DB_URL"
 ```
 
-This applies every file in `supabase/migrations/` in order: the schema
-(halls/tables/reservations), the double-booking exclusion constraint, the
-RPC functions used for atomic multi-table writes, and the Realtime
-publication setup.
+Это применит все файлы из `supabase/migrations/` по порядку: схему
+(залы/столики/брони), ограничение на двойное бронирование, RPC-функции
+для атомарной записи в несколько столиков и настройку Realtime-публикации.
 
-### 3. Seed demo data (optional)
+### 3. Демо-данные (опционально)
 
 ```bash
 npx tsx scripts/seed.ts
 ```
 
-Creates two halls and a handful of tables so the floor plan and
-availability aren't empty on first run.
+Создаёт два зала и несколько столиков, чтобы схема зала и доступность не
+были пустыми при первом запуске.
 
-### 4. Create a staff account
+### 4. Учётная запись сотрудника
 
-Staff accounts aren't self-service — create one via the Supabase dashboard
-(Authentication → Users → Add user, email + password) or the
-`supabase.auth.admin.createUser` API, then insert a matching row into the
-`staff` table so `is_staff()` recognizes it.
+Аккаунты персонала не создаются самостоятельно — заведите один через
+дашборд Supabase (Authentication → Users → Add user, email + пароль) или
+через API `supabase.auth.admin.createUser`, а затем добавьте
+соответствующую запись в таблицу `staff`, чтобы `is_staff()` распознавал
+пользователя. Дальше новых администраторов можно добавлять прямо из
+панели персонала.
 
-### 5. Run it
+### 5. Запуск
 
 ```bash
 npm run dev       # http://localhost:3000
-npm run build     # production build
-npm run test       # integration tests, against your live Supabase project
+npm run build     # production-сборка
+npm run test       # интеграционные тесты на реальном проекте Supabase
+npm run test:e2e   # e2e-тесты Playwright
 npm run lint
 ```
 
-## Project structure
+## Структура проекта
 
 ```
 app/
-  page.tsx                 guest booking page
-  hostess/                 staff panel pages (login, halls, reservations)
-  api/                      Route Handlers (halls, tables, reservations, availability)
-  auth/callback/            magic-link redirect target
+  page.tsx                 страница бронирования для гостя
+  account/                 вход/регистрация/сброс пароля для гостей
+  hostess/                 страницы панели персонала (вход, залы, брони, сотрудники)
+  api/                      Route Handlers (залы, столики, брони, доступность)
+  auth/callback/            обработчик редиректа magic-link
 components/
-  guest/                    booking flow (floor plan, date picker, time slider, confirm)
-  hostess/                  admin UI (floor plan editor, forms, reservation editor)
-  Combobox.tsx, Modal.tsx, ConfirmDialog.tsx   shared UI primitives
+  guest/                    сценарий бронирования (схема зала, календарь, слайдер, подтверждение)
+  hostess/                  админ-интерфейс (редактор схемы зала, формы, редактор броней)
+  Combobox.tsx, Modal.tsx, ConfirmDialog.tsx   общие UI-примитивы
 lib/
-  supabase/                 browser/admin/auth Supabase clients
-  scheduling.ts, reservations.ts, ru.ts        shared domain + formatting helpers
+  supabase/                 клиенты Supabase (браузер/admin/auth)
+  scheduling.ts, reservations.ts, ru.ts        доменная логика и русская локализация
 hooks/
-  useReservationsRealtime.ts   Postgres Changes subscription for live updates
-supabase/migrations/         schema, RLS policies, RPC functions, in order
-tests/                        Vitest integration tests
+  useReservationsRealtime.ts   подписка на Postgres Changes для живых обновлений
+supabase/migrations/         схема, RLS-политики, RPC-функции по порядку
+tests/                        интеграционные тесты Vitest
 ```
 
-## Deployment
+## Деплой
 
-Deploy the Next.js app to [Vercel](https://vercel.com) with the same
-environment variables as `.env.local` (except `SUPABASE_DB_URL`, which is
-only needed locally to run migrations). In the Supabase dashboard, set
-**Authentication → URL Configuration** to match your deployed domain so
-magic-link and password-reset redirects land on the right site instead of
+Разверните Next.js-приложение на [Vercel](https://vercel.com) с теми же
+переменными окружения, что и в `.env.local` (кроме `SUPABASE_DB_URL` —
+она нужна только локально для миграций). В дашборде Supabase укажите в
+**Authentication → URL Configuration** ваш продакшн-домен, чтобы
+редиректы magic-link и сброса пароля вели на нужный сайт, а не на
 `localhost`.
