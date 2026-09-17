@@ -15,6 +15,13 @@ export function guestsLabel(n: number): string {
   return `${n} ${pluralize(n, "гость", "гостя", "гостей")}`;
 }
 
+/** Formats a number with a comma decimal separator (2.3 -> "2,3"), the
+ * Russian convention - JS's toString()/template interpolation always uses
+ * a period, which would look like a typo next to the rest of a Russian UI. */
+export function formatRuNumber(n: number): string {
+  return n.toString().replace(".", ",");
+}
+
 function fromIso(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
