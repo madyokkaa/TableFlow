@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { Plus } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
 import { formatDateLong } from "@/lib/ru";
 import { AdminShell } from "@/components/hostess/AdminShell";
@@ -136,20 +138,21 @@ function StaffPageContent() {
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">Доступ</p>
-          <h1 className="mt-1 font-display text-3xl text-ink text-balance">Сотрудники</h1>
-        </div>
-        <button
+        <h1 className="font-display text-3xl text-ink text-balance">Сотрудники</h1>
+        <motion.button
           type="button"
           onClick={() => {
             setFormError(null);
             setCreateOpen(true);
           }}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-claret px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-claret px-4 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-claret-strong"
         >
-          + Добавить админа
-        </button>
+          <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+          Добавить админа
+        </motion.button>
       </div>
 
       {successNote && (
@@ -171,7 +174,10 @@ function StaffPageContent() {
       ) : (
         <div className="flex flex-col divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
           {staff.map((member) => (
-            <div key={member.user_id} className="flex flex-wrap items-center gap-4 px-4 py-3">
+            <div
+              key={member.user_id}
+              className="flex flex-wrap items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-paper/60"
+            >
               <div className="min-w-[200px] flex-1 text-sm font-medium text-ink">{member.email ?? "—"}</div>
               <div className="text-xs text-muted">С {formatDateLong(member.created_at.slice(0, 10))}</div>
               <span

@@ -9,13 +9,13 @@ import { apiFetch } from "@/lib/api";
 import { unlockAudio } from "@/lib/notificationSound";
 import { useReservationsRealtime } from "@/hooks/useReservationsRealtime";
 import { SoundToggle } from "./SoundToggle";
-import { DashboardIcon, CalendarIcon, HallIcon, StaffIcon, BellIcon } from "./icons";
+import { LayoutDashboard, CalendarDays, DoorOpen, Users, Bell, LogOut } from "lucide-react";
 
 const NAV = [
-  { href: "/hostess/dashboard", label: "Дашборд", icon: DashboardIcon },
-  { href: "/hostess", label: "Брони", icon: CalendarIcon },
-  { href: "/hostess/halls", label: "Залы", icon: HallIcon },
-  { href: "/hostess/staff", label: "Сотрудники", icon: StaffIcon },
+  { href: "/hostess/dashboard", label: "Дашборд", icon: LayoutDashboard },
+  { href: "/hostess", label: "Брони", icon: CalendarDays },
+  { href: "/hostess/halls", label: "Залы", icon: DoorOpen },
+  { href: "/hostess/staff", label: "Сотрудники", icon: Users },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -33,11 +33,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             key={href}
             href={href}
             onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] ${
               active ? "bg-claret-tint text-claret" : "text-muted hover:bg-line/50 hover:text-ink"
             }`}
           >
-            <Icon className="h-[18px] w-[18px] shrink-0" />
+            <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
             <span className="hidden lg:inline">{label}</span>
           </Link>
         );
@@ -156,12 +156,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-colors hover:bg-line/50 hover:text-ink"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-muted transition-[background-color,color,transform] duration-150 ease-out hover:bg-line/50 hover:text-ink active:scale-[0.97]"
           >
+            <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden="true" />
             <span className="hidden lg:inline">Выйти</span>
-            <span className="lg:hidden" aria-hidden="true">
-              ⏻
-            </span>
           </button>
         </div>
       </aside>
@@ -172,10 +170,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             <Link
               href="/hostess?status=pending"
-              className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-line/50 hover:text-ink"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted transition-[background-color,color,transform] duration-150 ease-out hover:bg-line/50 hover:text-ink active:scale-90"
               title={notificationCount ? `${notificationCount} броней ожидают подтверждения` : "Уведомления"}
             >
-              <BellIcon className="h-[18px] w-[18px]" />
+              <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
               {!!notificationCount && (
                 <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-claret px-1 text-[10px] font-semibold leading-none text-white">
                   {notificationCount > 9 ? "9+" : notificationCount}
@@ -203,11 +201,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Link
               key={href}
               href={href}
-              className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-[color,transform] duration-150 ease-out active:scale-95 ${
                 active ? "text-claret" : "text-muted"
               }`}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-5 w-5" strokeWidth={1.75} />
               {label}
             </Link>
           );

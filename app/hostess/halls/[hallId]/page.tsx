@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { motion } from "motion/react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
 import { useReservationsRealtime } from "@/hooks/useReservationsRealtime";
 import { restaurantTodayIso } from "@/lib/scheduling";
@@ -158,19 +160,27 @@ function HallTablesContent({ hallId }: { hallId: number }) {
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <Link href="/hostess/halls" className="text-xs uppercase tracking-[0.14em] text-muted hover:text-claret">
-            ← Залы
+          <Link
+            href="/hostess/halls"
+            className="inline-flex items-center gap-1 text-xs uppercase tracking-[0.14em] text-muted transition-colors hover:text-claret"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+            Залы
           </Link>
           <h1 className="mt-1 font-display text-3xl text-ink text-balance">{hall?.name}</h1>
           {hall?.description && <p className="mt-1 text-sm text-muted">{hall.description}</p>}
         </div>
-        <button
+        <motion.button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-claret px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-claret px-4 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-claret-strong"
         >
-          + Новый стол
-        </button>
+          <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+          Новый стол
+        </motion.button>
       </div>
 
       <p className="mb-3 text-sm text-muted">

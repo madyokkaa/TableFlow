@@ -1,4 +1,4 @@
-import { UsersIcon } from "../icons";
+import { Users as UsersIcon } from "lucide-react";
 import type { DashboardStats } from "@/lib/dashboard/types";
 
 export function GuestOriginSplit({ origin }: { origin: DashboardStats["guestOrigin"] }) {

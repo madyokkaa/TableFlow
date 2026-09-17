@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
+import { Plus, ArrowRight } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
 import { AdminShell } from "@/components/hostess/AdminShell";
 import { Modal } from "@/components/Modal";
@@ -88,17 +90,18 @@ function HallsPageContent() {
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">Схема зала</p>
-          <h1 className="mt-1 font-display text-3xl text-ink text-balance">Залы</h1>
-        </div>
-        <button
+        <h1 className="font-display text-3xl text-ink text-balance">Залы</h1>
+        <motion.button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-claret px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-claret px-4 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-claret-strong"
         >
-          + Новый зал
-        </button>
+          <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+          Новый зал
+        </motion.button>
       </div>
 
       {loading || halls === null ? (
@@ -118,16 +121,23 @@ function HallsPageContent() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {halls.map((hall) => (
-            <div key={hall.id} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5">
+            <div
+              key={hall.id}
+              className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]"
+            >
               <div>
                 <Link href={`/hostess/halls/${hall.id}`} className="font-display text-lg text-ink hover:text-claret">
                   {hall.name}
                 </Link>
                 {hall.description && <p className="mt-1 text-sm text-muted">{hall.description}</p>}
               </div>
-              <div className="mt-auto flex gap-4 pt-2 text-sm">
-                <Link href={`/hostess/halls/${hall.id}`} className="text-claret underline decoration-claret/40 underline-offset-4 hover:text-claret-strong">
+              <div className="mt-auto flex items-center gap-4 pt-2 text-sm">
+                <Link
+                  href={`/hostess/halls/${hall.id}`}
+                  className="flex items-center gap-1 text-claret underline decoration-claret/40 underline-offset-4 hover:text-claret-strong"
+                >
                   Управлять столами
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
                 </Link>
                 <button
                   type="button"

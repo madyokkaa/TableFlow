@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "createdAt": "2026-09-17T21:53:04.270Z",
+        "reason": "pre-existing token (predates this session), documented in-code as intentional: a slight overshoot scoped to tactile press/pop micro-interactions only, explicitly not used for scrolling/text; currently unreferenced anywhere in the codebase"
+      }
+    ]
+  }
+}

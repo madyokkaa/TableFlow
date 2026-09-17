@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { motion } from "motion/react";
+import { X } from "lucide-react";
 
 export function Modal({
   open,
@@ -41,14 +43,17 @@ export function Modal({
       >
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 className="font-display text-xl text-ink">{title}</h2>
-          <button
+          <motion.button
             type="button"
             onClick={onClose}
             aria-label="Закрыть"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.92 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-paper hover:text-ink"
           >
-            ✕
-          </button>
+            <X className="h-[18px] w-[18px]" strokeWidth={1.75} />
+          </motion.button>
         </div>
         {children}
       </div>

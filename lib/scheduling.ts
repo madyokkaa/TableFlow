@@ -68,7 +68,14 @@ export const MAX_ADVANCE_BOOKING_DAYS = 90;
 /** The latest date a reservation may be made for, in the restaurant's local
  * timezone, as YYYY-MM-DD. */
 export function maxAdvanceBookingDateIso(): string {
-  const d = new Date(Date.now() + RESTAURANT_UTC_OFFSET_MINUTES * 60_000);
-  d.setUTCDate(d.getUTCDate() + MAX_ADVANCE_BOOKING_DAYS);
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  return addDaysIso(restaurantTodayIso(), MAX_ADVANCE_BOOKING_DAYS);
+}
+
+/** Adds (or subtracts, for negative `days`) whole days to a YYYY-MM-DD date,
+ * treating it as a plain calendar date (no timezone). */
+export function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + days);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDateLong } from "@/lib/ru";
 
 const WEEKDAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
@@ -91,9 +92,7 @@ export function DatePicker({
         className="flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 text-left text-sm text-ink outline-none transition-colors focus:border-claret"
       >
         <span className="capitalize">{formatDateLong(value)}</span>
-        <span aria-hidden="true" className="text-muted">
-          📅
-        </span>
+        <Calendar aria-hidden="true" strokeWidth={1.75} className="h-[18px] w-[18px] shrink-0 text-muted" />
       </button>
 
       {open && (
@@ -108,9 +107,9 @@ export function DatePicker({
               type="button"
               aria-label="Предыдущий месяц"
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-paper hover:text-ink active:scale-90"
             >
-              ‹
+              <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
             </button>
             <span className="text-sm font-medium text-ink">{monthLabel(viewMonth)}</span>
             <button
@@ -118,9 +117,9 @@ export function DatePicker({
               aria-label="Следующий месяц"
               disabled={!canGoNextMonth}
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-paper hover:text-ink active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted disabled:active:scale-100"
             >
-              ›
+              <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
             </button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-muted">

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { TrendDownIcon, TrendUpIcon } from "../icons";
+import { TrendingDown as TrendDownIcon, TrendingUp as TrendUpIcon } from "lucide-react";
 import { CARD_VARIANTS } from "./motionVariants";
 
 type Trend = { label: string; direction: "up" | "down"; tone: "positive" | "negative" | "neutral" };
