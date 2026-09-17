@@ -20,10 +20,20 @@ export type RealtimeStatus = "SUBSCRIBED" | "DISCONNECTED";
  * of DELETE is the weakest part of its guarantees (the payload only carries
  * replica-identity columns, so policies referencing other columns can't be
  * evaluated) - no reason to take on that surface for an event that never
- * fires. */
+ * fires.
+ *
+ * `channelName` must be unique per *simultaneously mounted* caller - the
+ * browser Supabase client is a singleton (see client.ts), so two hooks
+ * requesting the same channel name at once would share one already-
+ * subscribed channel object, and Supabase throws on adding `.on()`
+ * listeners to a channel after it's subscribed. AdminShell's notification
+ * badge is mounted on every /hostess/* page alongside that page's own
+ * subscription, which is exactly this situation - give each caller its own
+ * name. */
 export function useReservationsRealtime(
   onChange: (event: ReservationChangeEvent) => void,
-  onStatusChange?: (status: RealtimeStatus) => void
+  onStatusChange?: (status: RealtimeStatus) => void,
+  channelName = "hostess-reservations"
 ) {
   const onChangeRef = useRef(onChange);
   const onStatusChangeRef = useRef(onStatusChange);
@@ -35,7 +45,7 @@ export function useReservationsRealtime(
   useEffect(() => {
     const supabase = createBrowserSupabaseClient();
     const channel = supabase
-      .channel("hostess-reservations")
+      .channel(channelName)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "reservations" },
@@ -83,5 +93,5 @@ export function useReservationsRealtime(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [channelName]);
 }
