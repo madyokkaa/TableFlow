@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
 
 export type ComboboxOption<T extends string | number> = { value: T; label: string; sublabel?: string };
 
@@ -117,9 +118,11 @@ export function Combobox<T extends string | number>({
         className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 text-left text-sm text-ink outline-none transition-colors focus:border-claret"
       >
         <span className={selected ? "" : "text-muted"}>{selected?.label ?? placeholder}</span>
-        <span aria-hidden="true" className={`text-muted transition-transform duration-150 ${open ? "rotate-180" : ""}`}>
-          ⌄
-        </span>
+        <ChevronDown
+          aria-hidden="true"
+          strokeWidth={1.75}
+          className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200 ease-out ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open && (
@@ -305,7 +308,7 @@ export function MultiCombobox<T extends string | number>({
                       }`}
                       aria-hidden="true"
                     >
-                      {checked && "✓"}
+                      {checked && <Check className="h-3 w-3" strokeWidth={2.5} />}
                     </span>
                     <span className="flex flex-col">
                       <span>{option.label}</span>

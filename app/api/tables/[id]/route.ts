@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { completeExpiredReservations, deleteStaleReservations } from "@/lib/reservationCleanup";
 
 const SHAPES = ["rectangle", "round", "square"] as const;
 const MANUAL_STATUSES = ["occupied", "out_of_service"] as const;
@@ -125,6 +126,17 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
 
   const supabase = createAdminClient();
 
+  // A reservation whose time has passed shouldn't keep blocking this table -
+  // bring statuses up to date and clear out anything old enough to be
+  // permanently gone before checking what's actually still in the way.
+  try {
+    await completeExpiredReservations(supabase);
+    await deleteStaleReservations(supabase);
+  } catch (cleanupError) {
+    console.error("[tables.delete] reservation cleanup failed", cleanupError);
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
+  }
+
   const { count: activeCount, error: activeError } = await supabase
     .from("reservation_tables")
     .select("id", { count: "exact", head: true })
@@ -143,13 +155,18 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
 
   const { error, count: deletedCount } = await supabase.from("dining_tables").delete({ count: "exact" }).eq("id", tableId);
   if (error) {
-    // FK restrict (23503) means the table still has historical (completed
-    // /cancelled/no-show) reservations - preserving that history matters
+    // FK restrict (23503) means the table still has resolved (completed/
+    // cancelled/no-show) reservations within the retention window (see
+    // STALE_RESERVATION_RETENTION_DAYS) - preserving recent history matters
     // more than allowing a hard delete, so point staff at the inactive
-    // toggle instead of silently losing data.
+    // toggle instead of silently losing data. It'll be eligible for a real
+    // delete once that history ages past the retention window.
     if (error.code === "23503") {
       return NextResponse.json(
-        { error: "у этого стола есть история броней - его нельзя удалить, отметьте как недоступный" },
+        {
+          error:
+            "у этого стола есть недавняя история броней (младше 90 дней) - пока его нельзя удалить, отметьте как недоступный",
+        },
         { status: 409 }
       );
     }

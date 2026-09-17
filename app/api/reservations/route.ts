@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthenticatedUser, requireStaff } from "@/lib/supabase/auth";
 import { RESERVATION_STATUSES, STATUS_LABELS_RU, mapRpcError } from "@/lib/reservations";
 import { DEFAULT_DURATION_MINUTES, maxAdvanceBookingDateIso, restaurantTodayIso } from "@/lib/scheduling";
+import { completeExpiredReservations } from "@/lib/reservationCleanup";
 
 // Staff-only: list reservations with optional filters.
 export async function GET(request: NextRequest) {
@@ -34,6 +35,15 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createAdminClient();
+
+  try {
+    await completeExpiredReservations(supabase);
+  } catch (cleanupError) {
+    console.error("[reservations.list] expiring past reservations failed", cleanupError);
+    // Non-fatal - the list below would just show a handful of stale
+    // pending/confirmed rows a beat longer than ideal, not worth a 500.
+  }
+
   let query = supabase
     .from("reservations")
     .select(

@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { restaurantTodayIso, OPEN_HOUR, CLOSE_HOUR } from "@/lib/scheduling";
-import { addDaysIso } from "./dateUtils";
+import { restaurantTodayIso, addDaysIso, OPEN_HOUR, CLOSE_HOUR } from "@/lib/scheduling";
 import type { StatusCounts } from "./types";
 
 const RESOLVED_STATUSES = ["confirmed", "no-show", "completed"];

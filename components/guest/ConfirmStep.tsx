@@ -44,7 +44,7 @@ export function ConfirmStep({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="border-b border-line pb-4">
         <p className="text-xs uppercase tracking-[0.14em] text-muted">Ваш столик</p>
         <p className="mt-1 font-mono text-lg font-medium tabular-nums capitalize">{formatDateTime(date, time)}</p>

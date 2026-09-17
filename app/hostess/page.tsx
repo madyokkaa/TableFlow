@@ -195,10 +195,7 @@ function ReservationsPageContent() {
   return (
     <>
       <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">Зал ресторана</p>
-          <h1 className="mt-1 font-display text-3xl text-ink text-balance">Брони</h1>
-        </div>
+        <h1 className="font-display text-3xl text-ink text-balance">Брони</h1>
         {realtimeStatus === "DISCONNECTED" && (
           <p className="rounded-full bg-status-pending-tint px-3 py-1 text-xs text-status-pending">
             Нет связи с обновлениями в реальном времени
@@ -265,7 +262,7 @@ function ReservationsPageContent() {
               return (
                 <div
                   key={reservation.id}
-                  className={`flex flex-wrap items-center gap-4 px-4 py-3 ${
+                  className={`flex flex-wrap items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-paper/60 ${
                     highlightedIds.has(reservation.id) ? "animate-new-row" : ""
                   }`}
                 >

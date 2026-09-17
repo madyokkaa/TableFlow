@@ -6,38 +6,37 @@ import type { Session } from "@supabase/supabase-js";
 import { apiFetch, parseError } from "@/lib/api";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { candidateStartTimes, maxAdvanceBookingDateIso, restaurantTodayIso } from "@/lib/scheduling";
-import { formatDateShort, formatTime, guestsLabel } from "@/lib/ru";
+import { formatDateShort, formatTime } from "@/lib/ru";
 import { GuestFloorPlan } from "./GuestFloorPlan";
-import { DatePicker } from "./DatePicker";
-import { TimeSlider } from "./TimeSlider";
+import { TableRow } from "./TableRow";
+import { TimeRow } from "./TimeRow";
+import { BookingSummaryBar } from "./BookingSummaryBar";
 import { ConfirmStep } from "./ConfirmStep";
 import { SuccessCelebration } from "./SuccessCelebration";
+import { Modal } from "@/components/Modal";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
 
-const STEP_LABELS = ["Стол", "Дата", "Время", "Подтверждение"];
+type AvailabilitySlot = { table_id: number; start_time: string };
 
 export function BookingFlow({ session }: { session: Session | null }) {
-  const [step, setStep] = useState(0);
   const [partySize, setPartySize] = useState(2);
+  const [date, setDate] = useState(restaurantTodayIso());
 
   const [halls, setHalls] = useState<Hall[]>([]);
   const [tables, setTables] = useState<DiningTable[]>([]);
+  const [activeHallId, setActiveHallId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [selectedTable, setSelectedTable] = useState<DiningTable | null>(null);
-  // Restaurant-local date, not the guest's browser timezone - the server's
-  // availability filter and the DB's own "no bookings in the past" check
-  // both reason in the restaurant's local time too, so all three need to
-  // agree on what "today" means.
-  const [date, setDate] = useState(restaurantTodayIso());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
-  const [availableTimes, setAvailableTimes] = useState<Set<string> | null>(null);
-  const [timesLoading, setTimesLoading] = useState(false);
-  const [timesError, setTimesError] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{ name: string; email: string; date: string; time: string } | null>(
@@ -53,8 +52,10 @@ export function BookingFlow({ session }: { session: Session | null }) {
         setLoadError("Не удалось загрузить схему зала. Попробуйте обновить страницу.");
         return;
       }
-      setHalls(await hallsRes.json());
+      const hallsData: Hall[] = await hallsRes.json();
+      setHalls(hallsData);
       setTables(await tablesRes.json());
+      setActiveHallId((current) => current ?? hallsData[0]?.id ?? null);
     } catch {
       setLoadError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
     } finally {
@@ -67,50 +68,79 @@ export function BookingFlow({ session }: { session: Session | null }) {
     loadFloorPlan();
   }, [loadFloorPlan]);
 
-  // If the guest raises party size after picking a table that no longer
-  // fits, don't silently keep an invalid selection - send them back to
-  // re-pick rather than letting a too-small table reach the confirm step.
-  useEffect(() => {
-    if (selectedTable && partySize > selectedTable.max_capacity) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- derived invalidation, not a fetch
-      setSelectedTable(null);
-      setStep((s) => Math.min(s, 0));
-    }
-  }, [partySize, selectedTable]);
-
   const candidateTimes = useMemo(() => candidateStartTimes(), []);
 
-  const timesRequestIdRef = useRef(0);
-  const loadAvailableTimes = useCallback(async () => {
-    if (!selectedTable) return;
-    const requestId = ++timesRequestIdRef.current;
-    setTimesLoading(true);
-    setTimesError(null);
-    setSelectedTime(null);
+  // One shared availability fetch per date/party-size covers every table at
+  // once (the API supports omitting table_id) - both rows below read from
+  // it, so picking a different table never needs a new request.
+  const availabilityRequestId = useRef(0);
+  const loadAvailability = useCallback(async () => {
+    const requestId = ++availabilityRequestId.current;
+    setAvailabilityLoading(true);
+    setAvailabilityError(null);
     try {
-      const res = await fetch(`/api/availability?date=${date}&party_size=${partySize}&table_id=${selectedTable.id}`);
-      if (requestId !== timesRequestIdRef.current) return; // a newer request (e.g. the guest count changed again) superseded this one
+      const res = await fetch(`/api/availability?date=${date}&party_size=${partySize}`);
+      if (requestId !== availabilityRequestId.current) return;
       const body = await res.json();
       if (!res.ok) {
-        setAvailableTimes(new Set());
-        setTimesError(body.error ?? "Не удалось загрузить доступное время.");
+        setAvailability([]);
+        setAvailabilityError(body.error ?? "Не удалось загрузить доступное время.");
         return;
       }
-      setAvailableTimes(new Set((body as { start_time: string }[]).map((s) => s.start_time)));
+      setAvailability(body as AvailabilitySlot[]);
     } catch {
-      if (requestId !== timesRequestIdRef.current) return;
-      setAvailableTimes(new Set());
-      setTimesError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
+      if (requestId !== availabilityRequestId.current) return;
+      setAvailability([]);
+      setAvailabilityError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
     } finally {
-      if (requestId === timesRequestIdRef.current) setTimesLoading(false);
+      if (requestId === availabilityRequestId.current) setAvailabilityLoading(false);
     }
-  }, [selectedTable, date, partySize]);
+  }, [date, partySize]);
 
   useEffect(() => {
-    if (step !== 2 || !selectedTable) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount/dep-change, the canonical Effects use case
-    loadAvailableTimes();
-  }, [step, selectedTable, loadAvailableTimes]);
+    loadAvailability();
+  }, [loadAvailability]);
+
+  // Date or party size changed underneath the current picks - the old time
+  // is almost certainly no longer valid, and a party-size increase can also
+  // invalidate the table itself, so re-derive from a clean slate rather than
+  // let a stale selection reach the confirm step.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- derived invalidation, not a fetch
+    setSelectedTime(null);
+    if (selectedTable && partySize > selectedTable.max_capacity) {
+      setSelectedTable(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally excludes selectedTable so picking a table doesn't itself retrigger this
+  }, [date, partySize]);
+
+  const bookableTables = useMemo(
+    () => tables.filter((t) => t.is_active && t.manual_status !== "out_of_service"),
+    [tables]
+  );
+  const hallTables = useMemo(
+    () => bookableTables.filter((t) => t.hall_id === activeHallId),
+    [bookableTables, activeHallId]
+  );
+  const tableIdsWithAvailability = useMemo(() => new Set(availability.map((a) => a.table_id)), [availability]);
+  const unavailableTableIds = useMemo(
+    () => new Set(hallTables.filter((t) => !tableIdsWithAvailability.has(t.id)).map((t) => t.id)),
+    [hallTables, tableIdsWithAvailability]
+  );
+  const timesForSelectedTable = useMemo(() => {
+    if (!selectedTable) return new Set<string>();
+    return new Set(availability.filter((a) => a.table_id === selectedTable.id).map((a) => a.start_time));
+  }, [availability, selectedTable]);
+
+  function handleSelectTable(table: DiningTable) {
+    setSelectedTable((current) => (current?.id === table.id ? null : table));
+    setSelectedTime(null);
+  }
+
+  function handleSelectTime(time: string) {
+    setSelectedTime((current) => (current === time ? null : time));
+  }
 
   async function handleConfirm(fields: { name: string; phone: string; email: string }) {
     if (!selectedTable || !selectedTime) return;
@@ -133,14 +163,13 @@ export function BookingFlow({ session }: { session: Session | null }) {
         setSubmitError(await parseError(res));
         return;
       }
-      // Best-effort - remembers name/phone for next time. Never blocks or
-      // fails the booking itself if it doesn't go through.
       if (session) {
         createBrowserSupabaseClient()
           .auth.updateUser({ data: { full_name: fields.name, phone: fields.phone || null } })
           .catch(() => {});
       }
       setConfirmed({ name: fields.name, email: fields.email, date, time: selectedTime });
+      setConfirmOpen(false);
     } catch {
       setSubmitError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
     } finally {
@@ -184,7 +213,6 @@ export function BookingFlow({ session }: { session: Session | null }) {
           type="button"
           onClick={() => {
             setConfirmed(null);
-            setStep(0);
             setSelectedTable(null);
             setSelectedTime(null);
           }}
@@ -207,97 +235,67 @@ export function BookingFlow({ session }: { session: Session | null }) {
     );
   }
 
-  const canGoNext =
-    (step === 0 && selectedTable !== null) || step === 1 || (step === 2 && selectedTime !== null);
-
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5" role="list" aria-label="Шаги бронирования">
-          {STEP_LABELS.map((label, i) => (
-            <span key={label} role="listitem" title={label} className="h-1.5 w-6 overflow-hidden rounded-full bg-line">
-              <span
-                className={`block h-full w-full origin-left rounded-full bg-claret transition-transform duration-300 ease-out ${
-                  i <= step ? "scale-x-100" : "scale-x-0"
-                }`}
-              />
-            </span>
-          ))}
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted">Гостей</span>
-          <span className="flex items-center gap-1">
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 400, damping: 15 }}
-              onClick={() => setPartySize((p) => Math.max(1, p - 1))}
-              aria-label="Меньше гостей"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink transition-colors hover:border-claret"
-            >
-              −
-            </motion.button>
-            <span className="w-6 text-center font-mono tabular-nums text-ink">{partySize}</span>
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 400, damping: 15 }}
-              onClick={() => setPartySize((p) => Math.min(20, p + 1))}
-              aria-label="Больше гостей"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink transition-colors hover:border-claret"
-            >
-              +
-            </motion.button>
-          </span>
-        </label>
+    <div className="flex flex-col gap-8 pb-24 sm:pb-0">
+      <GuestFloorPlan
+        halls={halls}
+        activeHallId={activeHallId}
+        onHallChange={setActiveHallId}
+        visibleTables={hallTables}
+        partySize={partySize}
+        selectedTableId={selectedTable?.id ?? null}
+        unavailableTableIds={availabilityLoading ? new Set() : unavailableTableIds}
+        onSelectTable={handleSelectTable}
+      />
+
+      <div className="flex flex-col gap-2.5">
+        <p className="font-display text-lg text-ink">Столы</p>
+        {availabilityLoading ? (
+          <div className="skeleton h-12 rounded-xl border border-line" />
+        ) : (
+          <TableRow
+            tables={hallTables}
+            partySize={partySize}
+            selectedTableId={selectedTable?.id ?? null}
+            unavailableTableIds={unavailableTableIds}
+            onSelectTable={handleSelectTable}
+          />
+        )}
       </div>
 
-      <div key={step} style={{ animation: "step-enter 220ms ease-out" }}>
-        {step === 0 && (
-          <div className="flex flex-col gap-4">
-            <p className="font-display text-2xl text-ink text-balance">Выберите стол</p>
-            <GuestFloorPlan
-              halls={halls}
-              tables={tables}
-              partySize={partySize}
-              selectedTableId={selectedTable?.id ?? null}
-              onSelectTable={setSelectedTable}
-            />
-          </div>
+      <div className="flex flex-col gap-2.5">
+        <p className="font-display text-lg text-ink">Время</p>
+        {availabilityError ? (
+          <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-3 text-sm text-status-cancelled">
+            {availabilityError}
+          </p>
+        ) : availabilityLoading ? (
+          <div className="skeleton h-12 rounded-xl border border-line" />
+        ) : (
+          <TimeRow
+            hasSelectedTable={Boolean(selectedTable)}
+            times={candidateTimes}
+            availableTimes={timesForSelectedTable}
+            value={selectedTime}
+            onChange={handleSelectTime}
+          />
         )}
-        {step === 1 && (
-          <div className="flex flex-col gap-4">
-            <p className="font-display text-2xl text-ink text-balance">Выберите дату</p>
-            <div className="max-w-xs">
-              <DatePicker
-                value={date}
-                minDate={restaurantTodayIso()}
-                maxDate={maxAdvanceBookingDateIso()}
-                onChange={setDate}
-              />
-            </div>
-          </div>
-        )}
-        {step === 2 && (
-          <div className="flex flex-col gap-4">
-            <p className="font-display text-2xl text-ink text-balance">Выберите время</p>
-            {timesLoading || availableTimes === null ? (
-              <div className="skeleton h-16 rounded-xl border border-line" />
-            ) : timesError ? (
-              <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-3 text-sm text-status-cancelled">
-                {timesError}
-              </p>
-            ) : (
-              <TimeSlider
-                times={candidateTimes}
-                availableTimes={availableTimes}
-                value={selectedTime}
-                onChange={setSelectedTime}
-              />
-            )}
-          </div>
-        )}
-        {step === 3 && selectedTable && selectedTime && (
+      </div>
+
+      <BookingSummaryBar
+        date={date}
+        minDate={restaurantTodayIso()}
+        maxDate={maxAdvanceBookingDateIso()}
+        onDateChange={setDate}
+        partySize={partySize}
+        onPartySizeChange={setPartySize}
+        selectedTable={selectedTable}
+        selectedTime={selectedTime}
+        onSubmit={() => setConfirmOpen(true)}
+      />
+
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Подтверждение брони">
+        {selectedTable && selectedTime && (
           <ConfirmStep
             table={selectedTable}
             date={date}
@@ -311,40 +309,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
             defaultEmail={session?.user.email ?? ""}
           />
         )}
-      </div>
-
-      {step < 3 && (
-        <div className="flex items-center justify-between">
-          {step > 0 ? (
-            <button
-              type="button"
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-              className="text-sm text-muted underline decoration-line underline-offset-4 transition-colors hover:text-ink"
-            >
-              ← Назад
-            </button>
-          ) : (
-            <span />
-          )}
-          <motion.button
-            type="button"
-            whileHover={canGoNext ? { scale: 1.03 } : undefined}
-            whileTap={canGoNext ? { scale: 0.96 } : undefined}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => setStep((s) => Math.min(3, s + 1))}
-            disabled={!canGoNext}
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-6 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-claret-strong disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Далее →
-          </motion.button>
-        </div>
-      )}
-
-      {step === 0 && selectedTable && (
-        <p className="text-center text-xs text-muted">
-          Стол {selectedTable.label} · {guestsLabel(partySize)}
-        </p>
-      )}
+      </Modal>
     </div>
   );
 }

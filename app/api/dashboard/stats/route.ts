@@ -4,6 +4,7 @@ import { requireStaff } from "@/lib/supabase/auth";
 import { getTodaySummary, getOccupancyNow, getHallOccupancy, getUpcoming } from "@/lib/dashboard/liveQueries";
 import { getWeeklyKpis, getPeriodStats } from "@/lib/dashboard/periodQueries";
 import type { DashboardStats } from "@/lib/dashboard/types";
+import { completeExpiredReservations } from "@/lib/reservationCleanup";
 
 const VALID_PERIODS = [7, 30] as const;
 
@@ -24,6 +25,10 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
   try {
+    // Past-due pending/confirmed reservations shouldn't read as still
+    // active in "Брони сегодня" or the trend/no-show aggregates below.
+    await completeExpiredReservations(supabase);
+
     const occupancy = await getOccupancyNow(supabase);
     const [today, weekly, periodStats, upcoming, halls] = await Promise.all([
       getTodaySummary(supabase),

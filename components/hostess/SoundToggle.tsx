@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { Bell, BellOff } from "lucide-react";
 import { isSoundEnabled, setSoundEnabled, unlockAudio } from "@/lib/notificationSound";
 
 export function SoundToggle() {
@@ -19,14 +21,17 @@ export function SoundToggle() {
   }
 
   return (
-    <button
+    <motion.button
       type="button"
       onClick={toggle}
       aria-pressed={enabled}
       title={enabled ? "Звук уведомлений включён" : "Звук уведомлений выключен"}
-      className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-muted transition-colors hover:bg-paper hover:text-ink"
+      whileHover={{ scale: 1.06 }}
+      whileTap={{ scale: 0.92 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-paper hover:text-ink"
     >
-      {enabled ? "🔔" : "🔕"}
-    </button>
+      {enabled ? <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} /> : <BellOff className="h-[18px] w-[18px]" strokeWidth={1.75} />}
+    </motion.button>
   );
 }
