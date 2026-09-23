@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, X } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useReservationsRealtime, type ReservationChangeEvent, type RealtimeStatus } from "@/hooks/useReservationsRealtime";
@@ -38,6 +40,8 @@ function ReservationsPageContent() {
   const [rejectingReservation, setRejectingReservation] = useState<Reservation | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [acceptingIds, setAcceptingIds] = useState<Set<number>>(new Set());
+  const [rowError, setRowError] = useState<{ id: number; message: string } | null>(null);
   const [highlightedIds, setHighlightedIds] = useState<Set<number>>(new Set());
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("DISCONNECTED");
   // A realtime event that arrives before the initial load resolves would
@@ -140,20 +144,27 @@ function ReservationsPageContent() {
 
       if (didInsert) {
         playNotificationSound();
-        setHighlightedIds((prevSet) => new Set(prevSet).add(event.reservationId));
-        setTimeout(() => {
-          setHighlightedIds((prevSet) => {
-            const next = new Set(prevSet);
-            next.delete(event.reservationId);
-            return next;
-          });
-        }, 1800);
+        pulseHighlight(event.reservationId);
       }
     },
     [date, hallFilter, statusFilter, reservations]
   );
 
   useReservationsRealtime(handleRealtimeChange, setRealtimeStatus);
+
+  // Same brief claret pulse used for a new incoming booking, reused here as
+  // the "something about this row just changed" cue for a local accept/
+  // reject action - one animation vocabulary for both triggers.
+  function pulseHighlight(id: number) {
+    setHighlightedIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setHighlightedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 1800);
+  }
 
   async function handleEdit(fields: {
     date: string;
@@ -186,20 +197,29 @@ function ReservationsPageContent() {
     load();
   }
 
-  async function handleAccept() {
-    if (!editingReservation) return;
-    setSubmitting(true);
-    setFormError(null);
-    const res = await apiFetch(`/api/reservations/${editingReservation.id}`, {
+  // Shared by the row's own quick-action button and the edit modal's -
+  // accepting is instant (no confirmation), so both call sites just need a
+  // reservation to act on, not a "which one is being edited" context.
+  async function handleAccept(reservation: Reservation) {
+    setAcceptingIds((prev) => new Set(prev).add(reservation.id));
+    setRowError(null);
+    const res = await apiFetch(`/api/reservations/${reservation.id}`, {
       method: "PATCH",
       body: JSON.stringify({ status: "confirmed" }),
     });
-    setSubmitting(false);
+    setAcceptingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(reservation.id);
+      return next;
+    });
     if (!res.ok) {
-      setFormError(await parseError(res));
+      const message = await parseError(res);
+      setRowError({ id: reservation.id, message });
+      if (editingReservation?.id === reservation.id) setFormError(message);
       return;
     }
-    setEditingReservation(null);
+    pulseHighlight(reservation.id);
+    if (editingReservation?.id === reservation.id) setEditingReservation(null);
     load();
   }
 
@@ -212,7 +232,8 @@ function ReservationsPageContent() {
     if (!res.ok) {
       throw new Error(await parseError(res));
     }
-    setEditingReservation(null);
+    pulseHighlight(rejectingReservation.id);
+    if (editingReservation?.id === rejectingReservation.id) setEditingReservation(null);
     load();
   }
 
@@ -306,7 +327,41 @@ function ReservationsPageContent() {
                     )}
                   </div>
                   <StatusPill status={reservation.status} />
-                  <div className="flex shrink-0 gap-3 text-sm">
+                  <div className="flex shrink-0 items-center gap-2 text-sm">
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {reservation.status === "pending" && (
+                        <motion.span
+                          key="quick-actions"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ duration: 0.15, ease: "easeOut" }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <motion.button
+                            type="button"
+                            title="Принять"
+                            aria-label="Принять бронь"
+                            onClick={() => handleAccept(reservation)}
+                            disabled={acceptingIds.has(reservation.id)}
+                            whileTap={{ scale: 0.88 }}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-confirmed-tint text-status-confirmed transition-[filter,transform] duration-150 ease-out hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Check className="h-4 w-4" strokeWidth={2.5} />
+                          </motion.button>
+                          <motion.button
+                            type="button"
+                            title="Отклонить"
+                            aria-label="Отклонить бронь"
+                            onClick={() => setRejectingReservation(reservation)}
+                            whileTap={{ scale: 0.88 }}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-cancelled-tint text-status-cancelled transition-[filter,transform] duration-150 ease-out hover:brightness-95"
+                          >
+                            <X className="h-4 w-4" strokeWidth={2.5} />
+                          </motion.button>
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                     <button
                       type="button"
                       onClick={() => setEditingReservation(reservation)}
@@ -315,6 +370,9 @@ function ReservationsPageContent() {
                       Изменить
                     </button>
                   </div>
+                  {rowError?.id === reservation.id && (
+                    <p className="w-full text-xs text-status-cancelled">{rowError.message}</p>
+                  )}
                 </div>
               );
             })}
@@ -334,7 +392,7 @@ function ReservationsPageContent() {
             submitting={submitting}
             error={formError}
             onSubmit={handleEdit}
-            onAccept={editingReservation.status === "pending" ? handleAccept : undefined}
+            onAccept={editingReservation.status === "pending" ? () => handleAccept(editingReservation) : undefined}
             onRequestReject={
               (ALLOWED_STATUS_TRANSITIONS[editingReservation.status] ?? []).includes("cancelled")
                 ? () => setRejectingReservation(editingReservation)

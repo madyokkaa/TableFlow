@@ -8,6 +8,17 @@ import type { DiningTable } from "@/components/hostess/TableForm";
 
 const PADDING = 32;
 
+// A table's hover/selected feedback scales the button up 6% via a CSS
+// transform (motion's whileHover/whileTap). Its `<foreignObject>` box is a
+// literal pixel rect in SVG space, though, and doesn't grow with it - the
+// scaled-up button used to render larger than that box, sticking out past
+// its cell (most visible on rectangular tables, whose straight edges cross
+// the neighbouring grid lines; round tables hid the same overflow better).
+// Padding every table's foreignObject (and the viewBox itself, so edge
+// tables don't hit the SVG's own boundary) by more than the scale growth
+// needs gives the animation room to happen without ever exceeding its cell.
+const TABLE_HOVER_PAD = 6;
+
 /** Read-only floor plan for guests: the whole room renders at once, scaled
  * to fit its container via the SVG viewBox's native "zoom to fit" behaviour
  * (preserveAspectRatio) - never a fixed canvas that scrolls sideways. Real
@@ -44,7 +55,12 @@ export function GuestFloorPlan({
       maxX = Math.max(maxX, t.pos_x + size.w);
       maxY = Math.max(maxY, t.pos_y + size.h);
     }
-    return { minX: 0, minY: 0, width: maxX + PADDING, height: maxY + PADDING };
+    return {
+      minX: -TABLE_HOVER_PAD,
+      minY: -TABLE_HOVER_PAD,
+      width: maxX + PADDING + TABLE_HOVER_PAD,
+      height: maxY + PADDING + TABLE_HOVER_PAD,
+    };
   }, [visibleTables]);
 
   return (
@@ -95,8 +111,14 @@ export function GuestFloorPlan({
               const disabled = tooSmall || noAvailability;
               const selected = table.id === selectedTableId;
               return (
-                <foreignObject key={table.id} x={table.pos_x} y={table.pos_y} width={size.w} height={size.h}>
-                  <div className="h-full w-full">
+                <foreignObject
+                  key={table.id}
+                  x={table.pos_x - TABLE_HOVER_PAD}
+                  y={table.pos_y - TABLE_HOVER_PAD}
+                  width={size.w + TABLE_HOVER_PAD * 2}
+                  height={size.h + TABLE_HOVER_PAD * 2}
+                >
+                  <div className="flex h-full w-full items-center justify-center">
                     <motion.button
                       type="button"
                       disabled={disabled}
@@ -105,7 +127,8 @@ export function GuestFloorPlan({
                       whileHover={disabled ? undefined : { scale: 1.06 }}
                       whileTap={disabled ? undefined : { scale: 0.95 }}
                       transition={{ type: "spring", stiffness: 380, damping: 18 }}
-                      className={`flex h-full w-full touch-none flex-col items-center justify-center border-2 text-center transition-[background-color,border-color,box-shadow,opacity] duration-200 ${size.className} ${
+                      style={{ width: size.w, height: size.h }}
+                      className={`flex touch-none flex-col items-center justify-center border-2 text-center transition-[background-color,border-color,box-shadow,opacity] duration-200 ${size.className} ${
                         selected
                           ? "border-claret bg-claret text-white shadow-lg"
                           : disabled

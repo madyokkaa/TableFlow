@@ -9,7 +9,7 @@ import { candidateStartTimes, maxAdvanceBookingDateIso, restaurantTodayIso } fro
 import { formatDateShort, formatTime } from "@/lib/ru";
 import { GuestFloorPlan } from "./GuestFloorPlan";
 import { TableRow } from "./TableRow";
-import { TimeRow } from "./TimeRow";
+import { TimeSlider } from "./TimeSlider";
 import { BookingSummaryBar } from "./BookingSummaryBar";
 import { ConfirmStep } from "./ConfirmStep";
 import { SuccessCelebration } from "./SuccessCelebration";
@@ -272,7 +272,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
         ) : availabilityLoading ? (
           <div className="skeleton h-12 rounded-xl border border-line" />
         ) : (
-          <TimeRow
+          <TimeSlider
             hasSelectedTable={Boolean(selectedTable)}
             times={candidateTimes}
             availableTimes={timesForSelectedTable}
