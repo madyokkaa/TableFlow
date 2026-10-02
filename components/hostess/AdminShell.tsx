@@ -132,7 +132,7 @@ function SideCaption({ children }: { children: React.ReactNode }) {
 /** Wraps every protected /hostess/* page: redirects to /hostess/login if
  * there's no session, and renders the shared sidebar/header chrome once
  * there is one. Login/forgot/reset-password pages don't use this. */
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -439,7 +439,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="flex-1 px-4 pb-20 pt-6 md:px-8 md:pb-[90px] md:pl-9 md:pt-[30px]">
-            <div className="mx-auto w-full max-w-6xl">{children}</div>
+            <div className={`mx-auto w-full transition-[max-width] duration-400 ${wide ? "max-w-[1640px]" : "max-w-6xl"}`}>
+              {children}
+            </div>
           </main>
         </div>
       </div>

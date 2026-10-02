@@ -283,3 +283,537 @@ body {
 .animate-breathe {
   animation: breathe 2s ease-in-out infinite;
 }
+
+/* =====================================================================
+   Floor plan (staff editor now, guest plan in stage 3)
+   Sizes are set inline in cqw relative to .fp-plan's width, so the plan
+   keeps real proportions at any window width and zoom.
+   ===================================================================== */
+.fp-plan {
+  position: relative;
+  container-type: inline-size;
+  min-width: 600px;
+  touch-action: none;
+  transition:
+    width 0.45s cubic-bezier(0.6, 0, 0.2, 1),
+    background-color 0.4s;
+}
+.fp-plan.fp-noseats .fp-arm {
+  display: none;
+}
+
+@keyframes fp-fadein {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fp-spawn-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+@keyframes fp-spawn-big {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes fp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes fp-shake {
+  20% {
+    margin-left: -8px;
+  }
+  40% {
+    margin-left: 8px;
+  }
+  60% {
+    margin-left: -5px;
+  }
+  80% {
+    margin-left: 3px;
+  }
+}
+@keyframes fp-seat-in {
+  from {
+    opacity: 0;
+    scale: 0.3;
+  }
+}
+@keyframes fp-sel-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+@keyframes fp-sway {
+  to {
+    filter: brightness(1.15);
+  }
+}
+
+/* Generic placed object (tables and hall objects alike). */
+.fp-obj {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition:
+    left 0.3s cubic-bezier(0.3, 1.5, 0.5, 1),
+    top 0.3s cubic-bezier(0.3, 1.5, 0.5, 1),
+    transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1),
+    width 0.35s,
+    height 0.35s;
+  z-index: 1;
+}
+.fp-obj .fp-dk {
+  animation: fp-spawn-in 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.fp-obj.fp-spawn .fp-dk {
+  animation: fp-spawn-big 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.fp-obj:hover .fp-dk {
+  filter: brightness(1.18);
+}
+.fp-obj.fp-drag {
+  transition:
+    left 0.1s ease-out,
+    top 0.1s ease-out,
+    transform 0.45s;
+  cursor: grabbing;
+  z-index: 9;
+}
+.fp-obj.fp-drag .fp-dk {
+  box-shadow: 0 18px 30px -12px #000;
+}
+.fp-obj:focus-visible {
+  outline: none;
+}
+.fp-obj:focus-visible .fp-dk {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 4px;
+}
+.fp-obj.fp-bad .fp-dk {
+  outline: 2px solid var(--color-status-cancelled);
+  outline-offset: 3px;
+  filter: saturate(0.4);
+}
+.fp-obj.fp-shake {
+  animation: fp-shake 0.45s;
+}
+.fp-obj.fp-static {
+  cursor: default;
+}
+.fp-label {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Hall object artwork, one modifier per kind. */
+.fp-dk {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+}
+.k-bar .fp-dk {
+  background: linear-gradient(#3a2a20, #2c1f18);
+  border: 1.5px solid #7a5a3a;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 3px #24180f;
+}
+.k-bar .fp-dk::after {
+  content: "";
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  top: 104%;
+  height: 46%;
+  background: radial-gradient(circle at 50% 55%, #4a3833 0 33%, transparent 35%) 0 0 / 16.66% 100% repeat-x;
+}
+.k-hostess .fp-dk {
+  background: #2e1c21;
+  border: 1.5px solid var(--color-claret);
+  border-radius: 12px 12px 4px 4px;
+}
+.k-hostess .fp-dk::after {
+  content: "";
+  position: absolute;
+  top: 16%;
+  right: 10%;
+  width: 14%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--color-claret);
+  box-shadow: 0 0 8px var(--color-claret);
+  animation: breathe 1.6s infinite;
+}
+.k-stairs .fp-dk {
+  background: repeating-linear-gradient(180deg, #2a201d 0 8%, #4a3833 8% 10%);
+  border: 1.5px solid #5a443d;
+  border-radius: 4px;
+}
+.k-stairs .fp-dk::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  width: 22%;
+  aspect-ratio: 1;
+  transform: translateX(-50%) rotate(45deg);
+  border-left: 2px solid #c9b6ae;
+  border-top: 2px solid #c9b6ae;
+}
+.k-entrance .fp-dk {
+  background: var(--color-status-confirmed);
+  border-radius: 3px;
+  box-shadow: 0 0 12px rgb(127 209 161 / 0.45);
+}
+.k-entrance .fp-dk::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  width: 50%;
+  aspect-ratio: 1;
+  border: 1.5px dashed var(--color-status-confirmed);
+  border-left: 0;
+  border-bottom: 0;
+  border-radius: 0 100% 0 0;
+  opacity: 0.6;
+}
+.k-door .fp-dk {
+  background: #a8958e;
+  border-radius: 2px;
+}
+.k-door .fp-dk::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1.5px dashed #a8958e;
+  border-left: 0;
+  border-bottom: 0;
+  border-radius: 0 100% 0 0;
+  opacity: 0.5;
+}
+.k-window .fp-dk {
+  background: #9cc7d6;
+  border-radius: 2px;
+  opacity: 0.8;
+  box-shadow: inset 0 0 0 2px #cfe6ee;
+}
+.k-rail .fp-dk {
+  border-top: 3px dashed #8f7c75;
+  border-radius: 0;
+}
+.k-wall .fp-dk {
+  background: #5a443d;
+  border-radius: 2px;
+}
+.k-column .fp-dk {
+  background: #3a2c28;
+  border: 1.5px solid #6f5d57;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 4px #2a201d;
+}
+.k-plant .fp-dk {
+  border-radius: 50%;
+  background: radial-gradient(circle, #4f8a62 0 22%, #2f5a40 24% 55%, #1e3326 57%);
+  border: 1px solid #2f4234;
+  animation: fp-sway 4s ease-in-out infinite alternate;
+}
+.k-kitchen .fp-dk {
+  background: repeating-linear-gradient(45deg, #1f1715 0 7px, #2a201d 7px 14px);
+  border: 1.5px solid #5a443d;
+  border-radius: 8px;
+}
+.k-wc .fp-dk {
+  background: #1b2226;
+  border: 1.5px solid #4a5a66;
+  border-radius: 8px;
+}
+.k-stage .fp-dk {
+  background-color: #2e1c21;
+  background-image: radial-gradient(rgb(236 143 163 / 0.28) 1px, transparent 1.6px);
+  background-size: 10px 10px;
+  border: 1.5px solid #6b3a48;
+  border-radius: 14px 14px 4px 4px;
+}
+.k-sofa .fp-dk {
+  background: #3b2229;
+  border: 1.5px solid #6b3a48;
+  border-radius: 12px;
+  box-shadow: inset 0 -9px 0 0 #4d2c36;
+}
+.k-wc {
+  color: #9cc7d6;
+}
+.k-entrance {
+  color: #13261a;
+}
+.k-kitchen,
+.k-stairs,
+.k-bar {
+  color: #e6d8d2;
+}
+.k-hostess,
+.k-stage {
+  color: var(--color-claret-strong);
+}
+
+/* Tables: top + chairs. */
+.fp-table {
+  z-index: 3;
+}
+.fp-top {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-status-pending);
+  background: #2a2114;
+  color: var(--color-status-pending);
+  letter-spacing: 0;
+  text-transform: none;
+  transition:
+    transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1),
+    box-shadow 0.3s,
+    border-radius 0.4s,
+    background 0.3s,
+    border-color 0.3s;
+  animation: fp-pop 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.fp-table.round .fp-top {
+  border-radius: 50%;
+}
+.fp-table.rectangle .fp-top,
+.fp-table.square .fp-top {
+  border-radius: 14px;
+}
+.fp-table:hover .fp-top {
+  transform: scale(1.05);
+  box-shadow: 0 14px 30px -12px #000;
+}
+.fp-table.fp-drag .fp-top {
+  transform: scale(1.08);
+  box-shadow:
+    0 26px 40px -14px #000,
+    0 0 0 6px rgb(227 181 94 / 0.15);
+}
+.fp-table.fp-spawn .fp-top {
+  animation: fp-spawn-big 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.fp-table.s-busy .fp-top {
+  border-color: var(--color-status-confirmed);
+  background: #1a2a20;
+  color: #a8dcbc;
+}
+.fp-table.s-off .fp-top {
+  border-color: #6f5d57;
+  color: #a8958e;
+  background: repeating-linear-gradient(45deg, #1d1513 0 6px, #262019 6px 12px);
+}
+.fp-table.s-hidden .fp-top {
+  border-style: dashed;
+  border-color: #6f5d57;
+  color: #a8958e;
+  background: #1a1412;
+}
+.fp-table.fp-bad .fp-top {
+  border-color: var(--color-status-cancelled) !important;
+  background: #2a1816 !important;
+  color: var(--color-status-cancelled) !important;
+}
+.fp-table:focus-visible .fp-top {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 6px;
+}
+.fp-txt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  transition: transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.fp-num {
+  font-family: var(--font-display), Georgia, serif;
+  line-height: 1;
+}
+.fp-cap {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  opacity: 0.85;
+}
+.fp-arm {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  z-index: 1;
+  transition: transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.fp-seat {
+  position: absolute;
+  border-radius: 6px 6px 3px 3px;
+  background: #3b2c28;
+  border: 1px solid #5a443d;
+  transition: transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+  animation: fp-seat-in 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.fp-table.s-busy .fp-seat {
+  background: #2a4434;
+  border-color: #3d6b4f;
+}
+.fp-table.s-off .fp-seat,
+.fp-table.s-hidden .fp-seat {
+  opacity: 0.35;
+}
+
+/* Editor overlays. */
+.fp-guide {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  background: var(--color-claret);
+  box-shadow: 0 0 10px var(--color-claret);
+  animation: fp-fadein 0.12s both;
+}
+.fp-guide.v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.fp-guide.h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+.fp-ghost {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed #5a443d;
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 0;
+  animation: fp-fadein 0.2s both;
+}
+.fp-ghost.round {
+  border-radius: 50%;
+}
+.fp-selbox {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed var(--color-claret);
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 7;
+  animation: fp-sel-in 0.3s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.fp-selbox i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--color-ink);
+  border: 2px solid var(--color-claret);
+}
+.fp-selbox i:nth-child(1) {
+  left: -5px;
+  top: -5px;
+}
+.fp-selbox i:nth-child(2) {
+  right: -5px;
+  top: -5px;
+}
+.fp-selbox i:nth-child(3) {
+  left: -5px;
+  bottom: -5px;
+}
+.fp-selbox i:nth-child(4) {
+  right: -5px;
+  bottom: -5px;
+}
+.fp-ruler {
+  position: absolute;
+  left: 1.6cqw;
+  bottom: 1.4cqw;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: #a8958e;
+  pointer-events: none;
+  z-index: 1;
+}
+.fp-ruler i {
+  display: block;
+  height: 7px;
+  border: 1.5px solid #a8958e;
+  border-top: 0;
+}
+
+/* Palette previews. */
+.fp-ptbl {
+  display: block;
+  border: 1.5px solid var(--color-status-pending);
+  background: #2a2114;
+  position: relative;
+}
+.fp-ptbl.round {
+  border-radius: 50%;
+}
+.fp-ptbl.rectangle,
+.fp-ptbl.square {
+  border-radius: 5px;
+}
+.fp-ptbl::before,
+.fp-ptbl::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 5px;
+  margin-left: -5px;
+  border-radius: 3px;
+  background: #5a443d;
+}
+.fp-ptbl::before {
+  top: -8px;
+}
+.fp-ptbl::after {
+  bottom: -8px;
+}
+.fp-pobj {
+  position: relative;
+  display: block;
+  font-size: 0;
+}
