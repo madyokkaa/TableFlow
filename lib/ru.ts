@@ -35,6 +35,11 @@ export function formatDateShort(iso: string): string {
   return fromIso(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 }
 
+/** "пятница, 3 октября" */
+export function formatDateWithWeekday(iso: string): string {
+  return fromIso(iso).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+}
+
 export function formatWeekday(iso: string): string {
   const label = fromIso(iso).toLocaleDateString("ru-RU", { weekday: "short" });
   return label.charAt(0).toUpperCase() + label.slice(1);

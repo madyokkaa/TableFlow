@@ -25,3 +25,7 @@ export type DashboardStats = {
   }[];
   halls: { hallId: number; name: string; totalTables: number; occupied: number; percent: number }[];
 };
+
+/** Response of /api/dashboard/occupancy - the live floor figure the staff
+ * sidebar shows on every page. Same shape as DashboardStats.occupancy. */
+export type OccupancyNow = DashboardStats["occupancy"];
