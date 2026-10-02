@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
           <button
             type="button"
             onClick={() => router.replace("/hostess/login")}
-            className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
+            className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
           >
             Перейти ко входу
           </button>
@@ -155,7 +155,7 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
+          className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
         >
           {submitting ? "Сохраняем…" : "Сохранить пароль"}
         </button>

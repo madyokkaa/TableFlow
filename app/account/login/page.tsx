@@ -60,7 +60,7 @@ function PasswordLogin({ onSwitchToMagicLink }: { onSwitchToMagicLink: () => voi
       <button
         type="submit"
         disabled={submitting}
-        className="mt-1 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
+        className="mt-1 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
       >
         {submitting ? "Входим…" : "Войти"}
       </button>
@@ -135,7 +135,7 @@ function MagicLinkLogin({ onSwitchToPassword }: { onSwitchToPassword: () => void
       <button
         type="submit"
         disabled={sending}
-        className="mt-1 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
+        className="mt-1 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
       >
         {sending ? "Отправляем…" : "Отправить ссылку для входа"}
       </button>

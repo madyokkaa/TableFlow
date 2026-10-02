@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Fraunces, JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
+// Fraunces ships no Cyrillic, so Russian headings fall through to Georgia -
+// a deliberate pairing (the prototypes do the same). Disabling the
+// metric-adjusted fallback keeps Georgia, not a Times clone, next in line.
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
   axes: ["opsz", "SOFT", "WONK"],
+  fallback: ["Georgia", "serif"],
+  adjustFontFallback: false,
 });
 
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin", "cyrillic"],
   weight: ["400", "500"],
 });
 
@@ -28,8 +33,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
-      className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable} h-full`}
+      lang="ru"
+      className={`${fraunces.variable} ${manrope.variable} ${jetbrainsMono.variable} h-full`}
     >
       <body className="min-h-full flex flex-col overflow-x-hidden font-sans">{children}</body>
     </html>

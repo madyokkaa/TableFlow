@@ -64,7 +64,7 @@ export function ChangePasswordCard() {
         <button
           type="submit"
           disabled={submitting || !valid}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-claret px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-claret px-4 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Сохраняем…" : "Сменить пароль"}
         </button>

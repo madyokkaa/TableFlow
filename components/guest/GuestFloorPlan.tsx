@@ -130,7 +130,7 @@ export function GuestFloorPlan({
                       style={{ width: size.w, height: size.h }}
                       className={`flex touch-none flex-col items-center justify-center border-2 text-center transition-[background-color,border-color,box-shadow,opacity] duration-200 ${size.className} ${
                         selected
-                          ? "border-claret bg-claret text-white shadow-lg"
+                          ? "border-claret bg-claret text-on-accent shadow-lg"
                           : disabled
                             ? "cursor-not-allowed border-line text-muted opacity-40"
                             : "border-line bg-surface text-ink hover:border-claret hover:shadow-md"
@@ -144,7 +144,7 @@ export function GuestFloorPlan({
                       }
                     >
                       <span className="font-mono text-sm font-medium">{table.label}</span>
-                      <span className={`text-[10px] tabular-nums ${selected ? "text-white/80" : "opacity-70"}`}>
+                      <span className={`text-[10px] tabular-nums ${selected ? "text-on-accent/80" : "opacity-70"}`}>
                         {table.min_capacity}–{table.max_capacity} мест
                       </span>
                     </motion.button>

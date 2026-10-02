@@ -112,7 +112,7 @@ export function ReservationEditModal({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-status-confirmed px-4 text-sm font-medium text-white transition-colors duration-150 ease-out hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-status-confirmed px-4 text-sm font-medium text-on-accent transition-colors duration-150 ease-out hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
               Принять
@@ -126,7 +126,7 @@ export function ReservationEditModal({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-status-cancelled px-4 text-sm font-medium text-white transition-colors duration-150 ease-out hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-status-cancelled px-4 text-sm font-medium text-on-accent transition-colors duration-150 ease-out hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <X className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
               Отклонить
@@ -282,7 +282,7 @@ export function ReservationEditModal({
       <button
         type="submit"
         disabled={submitting || !valid}
-        className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? "Сохраняем…" : "Сохранить"}
       </button>

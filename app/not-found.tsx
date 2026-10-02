@@ -19,7 +19,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="mt-8 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-6 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
+        className="mt-8 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-6 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
       >
         На главную
       </Link>

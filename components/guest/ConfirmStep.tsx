@@ -118,7 +118,7 @@ export function ConfirmStep({
         whileHover={canSubmit ? { scale: 1.02 } : undefined}
         whileTap={canSubmit ? { scale: 0.97 } : undefined}
         transition={{ type: "spring", stiffness: 400, damping: 17 }}
-        className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-claret-strong disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-colors duration-150 ease-out hover:bg-claret-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? <LoadingIndicator label="Подтверждаем…" /> : "Забронировать стол"}
       </motion.button>

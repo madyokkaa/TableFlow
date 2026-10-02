@@ -47,7 +47,7 @@ export function TableRow({
             transition={{ type: "spring", stiffness: 420, damping: 20 }}
             className={`flex min-w-[52px] flex-1 basis-[52px] flex-col items-center justify-center gap-0.5 rounded-xl border-2 px-1 py-2 text-center transition-[background-color,border-color,box-shadow,opacity] duration-200 ${
               selected
-                ? "border-claret bg-claret text-white shadow-[var(--shadow-elevated)]"
+                ? "border-claret bg-claret text-on-accent shadow-[var(--shadow-elevated)]"
                 : disabled
                   ? "cursor-not-allowed border-line text-muted opacity-40"
                   : "border-line bg-surface text-ink hover:border-claret hover:shadow-[var(--shadow-soft)]"
@@ -61,7 +61,7 @@ export function TableRow({
             }
           >
             <span className="font-mono text-sm font-medium">{table.label}</span>
-            <span className={`whitespace-nowrap text-[9px] tabular-nums ${selected ? "text-white/80" : "opacity-70"}`}>
+            <span className={`whitespace-nowrap text-[9px] tabular-nums ${selected ? "text-on-accent/80" : "opacity-70"}`}>
               {table.min_capacity}–{table.max_capacity} мест
             </span>
           </motion.button>

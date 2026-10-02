@@ -53,7 +53,7 @@ export function ConfirmDialog({
           type="button"
           onClick={handleConfirm}
           disabled={pending}
-          className={`inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] disabled:opacity-50 ${
+          className={`inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] disabled:opacity-50 ${
             danger ? "bg-status-cancelled hover:brightness-90" : "bg-claret hover:bg-claret-strong"
           }`}
         >

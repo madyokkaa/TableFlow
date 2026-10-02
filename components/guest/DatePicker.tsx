@@ -145,7 +145,7 @@ export function DatePicker({
                   }}
                   className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm tabular-nums transition-colors duration-150 ${
                     sel
-                      ? "bg-claret text-white"
+                      ? "bg-claret text-on-accent"
                       : disabled
                         ? "cursor-not-allowed text-muted opacity-40"
                         : today

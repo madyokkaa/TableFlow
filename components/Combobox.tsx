@@ -304,7 +304,7 @@ export function MultiCombobox<T extends string | number>({
                   >
                     <span
                       className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                        checked ? "border-claret bg-claret text-white" : "border-line"
+                        checked ? "border-claret bg-claret text-on-accent" : "border-line"
                       }`}
                       aria-hidden="true"
                     >

@@ -12,7 +12,7 @@ export function PeriodSelector({ value, onChange }: { value: 7 | 30; onChange: (
           type="button"
           onClick={() => onChange(opt.value)}
           className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            value === opt.value ? "bg-claret text-white" : "text-muted hover:text-ink"
+            value === opt.value ? "bg-claret text-on-accent" : "text-muted hover:text-ink"
           }`}
         >
           {opt.label}

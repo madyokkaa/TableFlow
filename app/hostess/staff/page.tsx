@@ -64,7 +64,7 @@ function AddStaffForm({
       <button
         type="submit"
         disabled={submitting || !valid}
-        className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? "Добавляем…" : "Добавить админа"}
       </button>
@@ -150,7 +150,7 @@ function StaffPageContent() {
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
           transition={{ type: "spring", stiffness: 400, damping: 17 }}
-          className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-claret px-4 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-claret-strong"
+          className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-claret px-4 text-sm font-medium text-on-accent transition-colors duration-150 ease-out hover:bg-claret-strong"
         >
           <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
           Добавить админа
