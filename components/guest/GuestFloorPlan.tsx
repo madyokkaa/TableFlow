@@ -2,9 +2,16 @@
 
 import { useMemo } from "react";
 import { motion } from "motion/react";
-import { SHAPE_SIZE } from "@/lib/tableShapes";
+import { tableSize } from "@/lib/tableShapes";
+import { hallPlanSize, rotatedSize } from "@/lib/floorPlan";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
+
+/** On-plan footprint of a table once rotated, in plan units. */
+function tableBox(table: DiningTable): { w: number; h: number } {
+  const size = tableSize(table.shape, table.max_capacity);
+  return rotatedSize(size.w, size.h, table.rotation ?? 0);
+}
 
 const PADDING = 32;
 
@@ -46,22 +53,29 @@ export function GuestFloorPlan({
   unavailableTableIds: Set<number>;
   onSelectTable: (table: DiningTable) => void;
 }) {
+  const activeHall = halls.find((h) => h.id === activeHallId);
   const viewBox = useMemo(() => {
     if (visibleTables.length === 0) return { minX: 0, minY: 0, width: 640, height: 360 };
+    // Positions are table centres in plan units (lib/floorPlan.ts). Fit the
+    // view to the tables actually present, but never past the room itself.
+    const room = activeHall ? hallPlanSize(activeHall) : null;
+    let minX = Infinity;
+    let minY = Infinity;
     let maxX = 0;
     let maxY = 0;
     for (const t of visibleTables) {
-      const size = SHAPE_SIZE[t.shape];
-      maxX = Math.max(maxX, t.pos_x + size.w);
-      maxY = Math.max(maxY, t.pos_y + size.h);
+      const size = tableBox(t);
+      minX = Math.min(minX, t.pos_x - size.w / 2);
+      minY = Math.min(minY, t.pos_y - size.h / 2);
+      maxX = Math.max(maxX, t.pos_x + size.w / 2);
+      maxY = Math.max(maxY, t.pos_y + size.h / 2);
     }
-    return {
-      minX: -TABLE_HOVER_PAD,
-      minY: -TABLE_HOVER_PAD,
-      width: maxX + PADDING + TABLE_HOVER_PAD,
-      height: maxY + PADDING + TABLE_HOVER_PAD,
-    };
-  }, [visibleTables]);
+    const left = Math.max(room ? 0 : -Infinity, minX - PADDING) - TABLE_HOVER_PAD;
+    const top = Math.max(room ? 0 : -Infinity, minY - PADDING) - TABLE_HOVER_PAD;
+    const right = Math.min(room ? room.w : Infinity, maxX + PADDING) + TABLE_HOVER_PAD;
+    const bottom = Math.min(room ? room.h : Infinity, maxY + PADDING) + TABLE_HOVER_PAD;
+    return { minX: left, minY: top, width: right - left, height: bottom - top };
+  }, [visibleTables, activeHall]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -105,7 +119,9 @@ export function GuestFloorPlan({
             aria-label="Схема зала"
           >
             {visibleTables.map((table) => {
-              const size = SHAPE_SIZE[table.shape];
+              const box = tableBox(table);
+              const top = tableSize(table.shape, table.max_capacity);
+              const rotation = table.rotation ?? 0;
               const tooSmall = table.max_capacity < partySize;
               const noAvailability = unavailableTableIds.has(table.id);
               const disabled = tooSmall || noAvailability;
@@ -113,10 +129,10 @@ export function GuestFloorPlan({
               return (
                 <foreignObject
                   key={table.id}
-                  x={table.pos_x - TABLE_HOVER_PAD}
-                  y={table.pos_y - TABLE_HOVER_PAD}
-                  width={size.w + TABLE_HOVER_PAD * 2}
-                  height={size.h + TABLE_HOVER_PAD * 2}
+                  x={table.pos_x - box.w / 2 - TABLE_HOVER_PAD}
+                  y={table.pos_y - box.h / 2 - TABLE_HOVER_PAD}
+                  width={box.w + TABLE_HOVER_PAD * 2}
+                  height={box.h + TABLE_HOVER_PAD * 2}
                 >
                   <div className="flex h-full w-full items-center justify-center">
                     <motion.button
@@ -127,8 +143,15 @@ export function GuestFloorPlan({
                       whileHover={disabled ? undefined : { scale: 1.06 }}
                       whileTap={disabled ? undefined : { scale: 0.95 }}
                       transition={{ type: "spring", stiffness: 380, damping: 18 }}
-                      style={{ width: size.w, height: size.h }}
-                      className={`flex touch-none flex-col items-center justify-center border-2 text-center transition-[background-color,border-color,box-shadow,opacity] duration-200 ${size.className} ${
+                      style={{
+                        width: top.w,
+                        height: top.h,
+                        rotate: `${rotation}deg`,
+                        // Finite radius rather than rounded-full - see tableShapes history:
+                        // a near-infinite radius under nested scale transforms rasterizes badly.
+                        borderRadius: table.shape === "round" ? top.w / 2 : 12,
+                      }}
+                      className={`flex touch-none flex-col items-center justify-center border-2 text-center transition-[background-color,border-color,box-shadow,opacity] duration-200 ${
                         selected
                           ? "border-claret bg-claret text-on-accent shadow-lg"
                           : disabled

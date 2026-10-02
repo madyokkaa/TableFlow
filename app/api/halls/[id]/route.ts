@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { parseHallLayoutFields } from "@/lib/floorPlan";
+import { MIGRATION_PENDING_MESSAGE, isMissingSchemaError } from "@/lib/schemaErrors";
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff(request);
@@ -29,14 +31,21 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     else if (typeof description === "string" && description.length > 2000) errors.description = "не более 2000 символов";
     else update.description = (description as string | null)?.trim() || null;
   }
+  parseHallLayoutFields(payload as Record<string, unknown>, update, errors);
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ error: "validation_failed", details: errors }, { status: 400 });
+  }
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: "нет полей для обновления" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("halls").update(update).eq("id", hallId).select().maybeSingle();
 
   if (error) {
+    if (isMissingSchemaError(error)) {
+      return NextResponse.json({ error: MIGRATION_PENDING_MESSAGE }, { status: 409 });
+    }
     if (error.code === "23505") {
       return NextResponse.json(
         { error: "validation_failed", details: { name: "зал с таким названием уже существует" } },

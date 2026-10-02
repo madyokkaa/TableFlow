@@ -15,17 +15,19 @@ const HALLS = [
   { name: "Terrace", description: "Outdoor seating, weather permitting." },
 ];
 
+// Positions are table centres in plan units (80 = 1 m) inside the default
+// 15 x 8.5 m hall - see lib/floorPlan.ts.
 const MAIN_TABLES = [
-  { label: "1", shape: "round" as const, min_capacity: 1, max_capacity: 2, pos_x: 60, pos_y: 60 },
-  { label: "2", shape: "round" as const, min_capacity: 1, max_capacity: 2, pos_x: 200, pos_y: 60 },
-  { label: "3", shape: "rectangle" as const, min_capacity: 2, max_capacity: 4, pos_x: 60, pos_y: 200 },
-  { label: "4", shape: "rectangle" as const, min_capacity: 2, max_capacity: 4, pos_x: 260, pos_y: 200 },
-  { label: "5", shape: "rectangle" as const, min_capacity: 4, max_capacity: 6, pos_x: 460, pos_y: 200 },
+  { label: "1", shape: "round" as const, min_capacity: 1, max_capacity: 2, pos_x: 160, pos_y: 160 },
+  { label: "2", shape: "round" as const, min_capacity: 1, max_capacity: 2, pos_x: 400, pos_y: 160 },
+  { label: "3", shape: "rectangle" as const, min_capacity: 2, max_capacity: 4, pos_x: 160, pos_y: 400 },
+  { label: "4", shape: "rectangle" as const, min_capacity: 2, max_capacity: 4, pos_x: 480, pos_y: 400 },
+  { label: "5", shape: "rectangle" as const, min_capacity: 4, max_capacity: 6, pos_x: 800, pos_y: 400 },
 ];
 
 const TERRACE_TABLES = [
-  { label: "T1", shape: "square" as const, min_capacity: 1, max_capacity: 2, pos_x: 60, pos_y: 60 },
-  { label: "T2", shape: "rectangle" as const, min_capacity: 2, max_capacity: 4, pos_x: 240, pos_y: 60 },
+  { label: "T1", shape: "square" as const, min_capacity: 1, max_capacity: 2, pos_x: 160, pos_y: 160 },
+  { label: "T2", shape: "rectangle" as const, min_capacity: 2, max_capacity: 4, pos_x: 440, pos_y: 160 },
 ];
 
 async function main() {

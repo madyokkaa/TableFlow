@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { parseHallLayoutFields } from "@/lib/floorPlan";
+import { MIGRATION_PENDING_MESSAGE, isMissingSchemaError } from "@/lib/schemaErrors";
 
 export async function GET() {
   const supabase = createAdminClient();
@@ -32,6 +34,8 @@ export async function POST(request: NextRequest) {
   } else if (typeof description === "string" && description.length > 2000) {
     errors.description = "не более 2000 символов";
   }
+  const layout: Record<string, unknown> = {};
+  parseHallLayoutFields(payload as Record<string, unknown>, layout, errors);
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ error: "validation_failed", details: errors }, { status: 400 });
   }
@@ -39,11 +43,14 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("halls")
-    .insert({ name: (name as string).trim(), description: (description as string | undefined)?.trim() || null })
+    .insert({ name: (name as string).trim(), description: (description as string | undefined)?.trim() || null, ...layout })
     .select()
     .single();
 
   if (error) {
+    if (isMissingSchemaError(error)) {
+      return NextResponse.json({ error: MIGRATION_PENDING_MESSAGE }, { status: 409 });
+    }
     if (error.code === "23505") {
       return NextResponse.json(
         { error: "validation_failed", details: { name: "зал с таким названием уже существует" } },

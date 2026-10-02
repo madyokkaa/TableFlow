@@ -1,8 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import type { FloorType } from "@/lib/floorPlan";
 
-export type Hall = { id: number; name: string; description: string | null };
+export type Hall = {
+  id: number;
+  name: string;
+  description: string | null;
+  // Real size and floor finish - absent until the real-scale floor-plan
+  // migration is applied (lib/floorPlan.ts hallPlanSize supplies defaults).
+  width_m?: number;
+  length_m?: number;
+  floor?: FloorType;
+};
 
 export function HallForm({
   initial,

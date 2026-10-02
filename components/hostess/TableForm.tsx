@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import type { Rotation } from "@/lib/floorPlan";
 
 export type DiningTable = {
   id: number;
@@ -13,6 +14,8 @@ export type DiningTable = {
   pos_y: number;
   is_active: boolean;
   manual_status: "occupied" | "out_of_service" | null;
+  /** Absent until the real-scale floor-plan migration is applied. */
+  rotation?: Rotation;
 };
 
 const SHAPES: DiningTable["shape"][] = ["rectangle", "round", "square"];

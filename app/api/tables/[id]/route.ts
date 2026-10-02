@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
 import { completeExpiredReservations, deleteStaleReservations } from "@/lib/reservationCleanup";
+import { isRotation } from "@/lib/floorPlan";
+import { MIGRATION_PENDING_MESSAGE, isMissingSchemaError } from "@/lib/schemaErrors";
 
 const SHAPES = ["rectangle", "round", "square"] as const;
 const MANUAL_STATUSES = ["occupied", "out_of_service"] as const;
@@ -19,7 +21,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const payload = await request.json().catch(() => ({}));
-  const { label, shape, min_capacity, max_capacity, pos_x, pos_y, is_active, manual_status, hall_id } =
+  const { label, shape, min_capacity, max_capacity, pos_x, pos_y, rotation, is_active, manual_status, hall_id } =
     payload as Record<string, unknown>;
 
   const errors: Record<string, string> = {};
@@ -60,6 +62,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (typeof pos_y !== "number") errors.pos_y = "должно быть числом";
     else update.pos_y = pos_y;
   }
+  if (rotation !== undefined) {
+    if (!isRotation(rotation)) errors.rotation = "должно быть 0, 90, 180 или 270";
+    else update.rotation = rotation;
+  }
   if (is_active !== undefined) {
     if (typeof is_active !== "boolean") errors.is_active = "должно быть true или false";
     else update.is_active = is_active;
@@ -85,6 +91,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   const { data, error } = await supabase.from("dining_tables").update(update).eq("id", tableId).select().maybeSingle();
 
   if (error) {
+    if (isMissingSchemaError(error)) {
+      return NextResponse.json({ error: MIGRATION_PENDING_MESSAGE }, { status: 409 });
+    }
     if (error.code === "23505") {
       return NextResponse.json(
         { error: "validation_failed", details: { label: "стол с таким номером уже есть в этом зале" } },
