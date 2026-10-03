@@ -3,7 +3,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { AuthCard } from "@/components/guest/AuthCard";
+import { Lock } from "lucide-react";
+import { AUTH_GHOST, AUTH_LINK, AuthCard, AuthError, AuthSubmit, PasswordField } from "@/components/guest/AuthCard";
 
 export default function GuestResetPasswordPage() {
   const router = useRouter();
@@ -85,14 +86,18 @@ export default function GuestResetPasswordPage() {
   if (done) {
     return (
       <AuthCard title="Пароль обновлён">
-        <p className="text-sm text-muted">Теперь вы можете войти с новым паролем.</p>
-        <button
-          type="button"
-          onClick={() => router.replace("/account/login")}
-          className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98]"
-        >
-          Перейти ко входу
-        </button>
+        <div className="flex flex-col items-center gap-4 py-4 text-center">
+          <svg className="ga-check h-[72px] w-[72px]" viewBox="0 0 72 72" fill="none" aria-hidden="true">
+            <circle cx="36" cy="36" r="32" stroke="var(--color-status-confirmed)" strokeWidth="3" />
+            <path d="M23 37l9 9 17-19" stroke="var(--color-status-confirmed)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <p role="status" className="text-sm text-muted">
+            Теперь вы можете войти с новым паролем.
+          </p>
+          <button type="button" onClick={() => router.replace("/account/login")} className={AUTH_GHOST}>
+            Перейти ко входу
+          </button>
+        </div>
       </AuthCard>
     );
   }
@@ -100,11 +105,10 @@ export default function GuestResetPasswordPage() {
   if (linkFailed) {
     return (
       <AuthCard title="Ссылка не сработала">
-        <p className="text-sm text-status-cancelled">Эта ссылка истекла или уже была использована. Запросите новую.</p>
-        <a
-          href="/account/forgot-password"
-          className="mt-5 inline-block text-sm text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
-        >
+        <p role="alert" className="text-sm text-status-cancelled">
+          Эта ссылка истекла или уже была использована. Запросите новую.
+        </p>
+        <a href="/account/forgot-password" className={AUTH_LINK}>
           Запросить новую ссылку
         </a>
       </AuthCard>
@@ -114,46 +118,41 @@ export default function GuestResetPasswordPage() {
   if (!ready) {
     return (
       <AuthCard title="Проверяем ссылку…">
-        <p className="text-sm text-muted">Секунду…</p>
+        <p className="flex items-center gap-3 text-sm text-muted" role="status">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-claret/25 border-t-claret" aria-hidden="true" />
+          Секунду…
+        </p>
       </AuthCard>
     );
   }
 
+  const lock = <Lock className="h-[17px] w-[17px]" strokeWidth={2} />;
   return (
-    <AuthCard title="Новый пароль">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Новый пароль</span>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Подтвердите пароль</span>
-          <input
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-          />
-        </label>
-        {formError && <p className="text-sm text-status-cancelled">{formError}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-1 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
-        >
-          {submitting ? "Сохраняем…" : "Сохранить пароль"}
-        </button>
+    <AuthCard title="Новый пароль" subtitle="Минимум 8 символов. После сохранения войдите с ним.">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+        <PasswordField
+          label="Новый пароль"
+          icon={lock}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={8}
+          autoComplete="new-password"
+          hint={password.length >= 8 ? "Отлично" : `Минимум 8 символов${password.length ? ` · ещё ${8 - password.length}` : ""}`}
+        />
+        <PasswordField
+          label="Подтвердите пароль"
+          icon={lock}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          minLength={8}
+          autoComplete="new-password"
+        />
+        {formError && <AuthError>{formError}</AuthError>}
+        <AuthSubmit busy={submitting} busyText="Сохраняем…">
+          Сохранить пароль
+        </AuthSubmit>
       </form>
     </AuthCard>
   );

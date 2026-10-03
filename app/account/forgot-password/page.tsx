@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { AuthCard } from "@/components/guest/AuthCard";
+import { Mail } from "lucide-react";
+import { AUTH_GHOST, AUTH_LINK_MUTED, AuthCard, AuthField, AuthSubmit } from "@/components/guest/AuthCard";
 
 export default function GuestForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -28,48 +29,50 @@ export default function GuestForgotPasswordPage() {
   if (sent) {
     return (
       <AuthCard title="Проверьте почту">
-        <p className="text-sm text-muted">
-          Если у <span className="text-ink">{email}</span> есть аккаунт, мы отправили на него ссылку для смены
-          пароля.
-        </p>
-        <a
-          href="/account/login"
-          className="mt-5 inline-block text-sm text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
-        >
-          Назад ко входу
-        </a>
+        <div className="flex flex-col items-center gap-4 py-4 text-center">
+          <svg
+            className="h-[60px] w-[84px] animate-[ga-envelope_1.6s_cubic-bezier(.3,1.2,.5,1)_both]"
+            viewBox="0 0 84 60"
+            fill="none"
+            stroke="var(--color-claret)"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="2" y="2" width="80" height="56" rx="8" />
+            <path d="M4 6l38 28L80 6" />
+          </svg>
+          <p role="status" className="text-sm text-muted">
+            Если у <b className="text-ink">{email}</b> есть аккаунт, мы отправили на него ссылку для смены пароля.
+          </p>
+          <a href="/account/login" className={AUTH_GHOST}>
+            Назад ко входу
+          </a>
+        </div>
       </AuthCard>
     );
   }
 
   return (
     <AuthCard title="Восстановление пароля" subtitle="Отправим ссылку для установки нового пароля.">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Email</span>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-            autoComplete="email"
-            className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={sending}
-          className="mt-1 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:opacity-50"
-        >
-          {sending ? "Отправляем…" : "Отправить ссылку"}
-        </button>
-        <a
-          href="/account/login"
-          className="text-center text-sm text-muted underline decoration-line underline-offset-4 transition-colors hover:text-ink"
-        >
-          Назад ко входу
-        </a>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+        <AuthField
+          label="Email"
+          icon={<Mail className="h-[17px] w-[17px]" strokeWidth={2} />}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="ivan@example.com"
+        />
+        <AuthSubmit busy={sending} busyText="Отправляем…">
+          Отправить ссылку
+        </AuthSubmit>
       </form>
+      <a href="/account/login" className={AUTH_LINK_MUTED}>
+        ← Назад ко входу
+      </a>
     </AuthCard>
   );
 }

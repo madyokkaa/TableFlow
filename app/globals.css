@@ -1190,3 +1190,197 @@ body {
     opacity: 0;
   }
 }
+
+/* ---- Guest auth: the table that sets itself as the form fills in ---- */
+@keyframes ga-chair-in {
+  from {
+    opacity: 0;
+    transform: translateY(-150px);
+  }
+}
+@keyframes ga-flicker {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(0.8) translate(1px, 0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.1) translate(-1px, 0);
+    opacity: 1;
+  }
+}
+@keyframes ga-envelope {
+  0% {
+    transform: translate(-40px, 30px) rotate(-14deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translate(6px, -6px) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes ga-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+.ga-scene {
+  position: relative;
+  width: 300px;
+  height: 300px;
+}
+.ga-arm {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+.ga-chair {
+  position: absolute;
+  left: -24px;
+  top: -14px;
+  width: 48px;
+  height: 28px;
+  border-radius: 15px 15px 8px 8px;
+  background: #3b2c28;
+  border: 1px solid #57423c;
+  transform: translateY(-92px);
+  transition:
+    transform 0.7s cubic-bezier(0.3, 1.5, 0.5, 1),
+    background-color 0.4s,
+    border-color 0.4s;
+  animation: ga-chair-in 0.8s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.ga-scene.out .ga-chair {
+  transform: translateY(-118px);
+}
+.ga-scene.done .ga-chair {
+  background: #b86a7c;
+  border-color: var(--color-claret);
+}
+.ga-top {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 156px;
+  height: 156px;
+  margin: -78px 0 0 -78px;
+  border-radius: 50%;
+  background: #2a1f1c;
+  border: 1px solid #4a3833;
+  box-shadow:
+    inset 0 0 0 12px #251b19,
+    0 30px 50px -20px #000;
+  transition: transform 0.6s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.ga-scene.done .ga-top {
+  transform: scale(1.04);
+}
+.ga-plate,
+.ga-glass,
+.ga-napkin {
+  position: absolute;
+  opacity: 0;
+  transition:
+    transform 0.55s cubic-bezier(0.3, 1.7, 0.5, 1),
+    opacity 0.3s;
+}
+.ga-plate {
+  left: -15px;
+  top: -15px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--color-ink);
+  box-shadow:
+    inset 0 0 0 5px #2a1f1c,
+    inset 0 0 0 6px var(--color-muted);
+  transform: translateY(-50px) scale(0);
+}
+.ga-plate.on {
+  transform: translateY(-50px) scale(1);
+  opacity: 1;
+}
+.ga-glass {
+  left: 12px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-claret);
+  transform: translateY(-58px) scale(0);
+}
+.ga-glass.on {
+  transform: translateY(-58px) scale(1);
+  opacity: 1;
+}
+.ga-napkin {
+  left: -6px;
+  top: -9px;
+  width: 12px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--color-claret);
+  transform: translate(-22px, -50px) rotate(-12deg) scale(0);
+}
+.ga-napkin.on {
+  transform: translate(-22px, -50px) rotate(-12deg) scale(1);
+  opacity: 1;
+}
+.ga-candle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 4px var(--color-line-strong);
+}
+.ga-flame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--color-status-pending);
+  box-shadow: 0 0 18px 8px rgb(227 181 94 / 0.35);
+  animation: ga-flicker 1.4s ease-in-out infinite alternate;
+}
+.ga-step i {
+  transition:
+    background-color 0.4s,
+    border-color 0.4s;
+}
+.ga-step svg {
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.3s,
+    transform 0.4s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+.ga-step.on svg {
+  opacity: 1;
+  transform: scale(1);
+}
+.ga-check circle {
+  stroke-dasharray: 210;
+  stroke-dashoffset: 210;
+  animation: gp-stroke 0.7s 0.1s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+}
+.ga-check path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: gp-stroke 0.45s 0.7s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+}
