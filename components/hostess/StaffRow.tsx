@@ -1,17 +1,31 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Mail, KeyRound, UserX } from "lucide-react";
-import { motion } from "motion/react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { KeyRound, Pencil } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
 import { formatDateLong } from "@/lib/ru";
 import { Modal } from "@/components/Modal";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { INPUT } from "./hall-editor/controls";
 
 export type StaffMember = { user_id: string; email: string | null; active: boolean; created_at: string };
 
 const ICON_BUTTON =
-  "flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-[background-color,color,transform] duration-150 ease-out hover:bg-paper hover:text-ink active:scale-90";
+  "flex h-11 w-11 items-center justify-center rounded-[10px] text-muted transition-[background-color,color,transform] duration-200 hover:bg-[#2a201d] hover:text-ink active:scale-90 disabled:pointer-events-none disabled:opacity-40";
+
+/** Hover/focus tooltip above a control - the label is also its aria-label. */
+function Tip({ text, children }: { text: string; children: ReactNode }) {
+  return (
+    <span className="group/tip relative flex">
+      {children}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 z-10 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-[7px] bg-ink px-2 py-[5px] text-[11px] font-semibold text-surface opacity-0 transition-[opacity,transform] duration-200 group-focus-within/tip:translate-y-0 group-focus-within/tip:opacity-100 group-hover/tip:translate-y-0 group-hover/tip:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
 
 function EditEmailForm({
   initialEmail,
@@ -35,22 +49,19 @@ function EditEmailForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Email</span>
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          type="email"
-          required
-          autoComplete="email"
-          className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-        />
+      <label className="flex flex-col gap-2 text-[13px] font-semibold">
+        Email
+        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required autoComplete="email" className={INPUT} />
       </label>
-      {error && <p className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">{error}</p>}
+      {error && (
+        <p role="alert" className="rounded-[13px] bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">
+          {error}
+        </p>
+      )}
       <button
         type="submit"
         disabled={submitting || !valid}
-        className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:bg-claret-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex h-11 items-center justify-center rounded-[13px] bg-claret px-5 text-sm font-bold text-on-accent transition-transform duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? "Сохраняем…" : "Сохранить email"}
       </button>
@@ -58,12 +69,31 @@ function EditEmailForm({
   );
 }
 
-export function StaffRow({ member, isSelf, onChanged }: { member: StaffMember; isSelf: boolean; onChanged: () => void }) {
+/** One staff account: avatar with an online dot, email and since-date,
+ * status pill, access switch (not for yourself), edit email and send a
+ * password-reset link. Access changes are reported back to the page, which
+ * owns the request and the toast with «Вернуть». */
+export function StaffRow({
+  member,
+  isSelf,
+  busy,
+  index,
+  onToggleAccess,
+  onChanged,
+  notify,
+}: {
+  member: StaffMember;
+  isSelf: boolean;
+  busy: boolean;
+  index: number;
+  onToggleAccess: (member: StaffMember) => void;
+  onChanged: () => void;
+  notify: (message: string, tone?: "ok" | "error") => void;
+}) {
   const [emailOpen, setEmailOpen] = useState(false);
-  const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   async function handleEmailSubmit(email: string) {
     setSubmitting(true);
@@ -75,81 +105,88 @@ export function StaffRow({ member, isSelf, onChanged }: { member: StaffMember; i
       return;
     }
     setEmailOpen(false);
+    notify(`Email изменён на ${email}`);
     onChanged();
   }
 
   async function handleResetPassword() {
-    setNote(null);
-    const res = await apiFetch(`/api/staff/${member.user_id}/reset-password`, { method: "POST" });
-    setNote(res.ok ? "Ссылка для сброса пароля отправлена." : await parseError(res));
+    setResetting(true);
+    try {
+      const res = await apiFetch(`/api/staff/${member.user_id}/reset-password`, { method: "POST" });
+      if (res.ok) notify(`Ссылка для сброса пароля отправлена на ${member.email ?? "почту сотрудника"}`);
+      else notify(await parseError(res), "error");
+    } catch {
+      notify("Не удалось связаться с сервером", "error");
+    } finally {
+      setResetting(false);
+    }
   }
 
-  async function handleDeactivate() {
-    const res = await apiFetch(`/api/staff/${member.user_id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error(await parseError(res));
-    onChanged();
-  }
+  const initial = (member.email ?? "?").charAt(0).toUpperCase();
+  const pill = isSelf
+    ? { label: "Это вы", cls: "bg-claret-tint text-claret" }
+    : member.active
+      ? { label: "Активен", cls: "bg-status-confirmed-tint text-status-confirmed" }
+      : { label: "Отключён", cls: "bg-[#231d1b] text-[#a8958e]" };
+  const switchTip = isSelf ? "Это вы" : member.active ? "Отключить доступ" : "Включить доступ";
 
   return (
-    <div className="flex flex-wrap items-center gap-4 px-4 py-3 transition-colors duration-150 hover:bg-paper/60">
-      <div className="min-w-[200px] flex-1">
-        <p className="text-sm font-medium text-ink">{member.email ?? "—"}</p>
-        {note && <p className="text-xs text-muted">{note}</p>}
-      </div>
-      <div className="text-xs text-muted">С {formatDateLong(member.created_at.slice(0, 10))}</div>
+    <div
+      className="grid animate-[gp-up_.5s_both] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b border-[#2a201d] px-4 py-3.5 transition-colors duration-200 last:border-b-0 hover:bg-surface-raised sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:px-5"
+      style={{ animationDelay: `${index * 70}ms` }}
+    >
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-          member.active ? "bg-status-confirmed-tint text-status-confirmed" : "bg-status-noshow-tint text-status-noshow"
+        className={`relative flex h-[42px] w-[42px] items-center justify-center rounded-[14px] font-display text-lg after:absolute after:-bottom-0.5 after:-right-0.5 after:h-[11px] after:w-[11px] after:rounded-full after:shadow-[0_0_0_3px_#1a1412] ${
+          member.active ? "bg-claret-tint text-claret after:bg-status-confirmed" : "bg-[#2a201d] text-[#8f7c75] after:bg-[#5a4a45]"
         }`}
+        aria-hidden="true"
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-        {member.active ? "Активен" : "Отключён"}
+        {initial}
       </span>
-      <div className="flex shrink-0 items-center gap-1">
-        <motion.button
-          type="button"
-          title="Изменить email"
-          onClick={() => setEmailOpen(true)}
-          whileTap={{ scale: 0.9 }}
-          className={ICON_BUTTON}
-        >
-          <Mail className="h-[18px] w-[18px]" strokeWidth={1.75} />
-        </motion.button>
-        <motion.button
-          type="button"
-          title="Сбросить пароль"
-          onClick={handleResetPassword}
-          whileTap={{ scale: 0.9 }}
-          className={ICON_BUTTON}
-        >
-          <KeyRound className="h-[18px] w-[18px]" strokeWidth={1.75} />
-        </motion.button>
-        {!isSelf && member.active && (
-          <motion.button
+      <div className="flex min-w-0 flex-col gap-[3px]">
+        <b className="truncate text-sm">{member.email ?? "—"}</b>
+        <small className="text-xs text-muted">с {formatDateLong(member.created_at.slice(0, 10))}</small>
+      </div>
+      <span
+        className={`hidden h-[26px] items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-semibold before:h-1.5 before:w-1.5 before:rounded-full before:bg-current sm:inline-flex ${pill.cls}`}
+      >
+        {pill.label}
+      </span>
+      <div className="flex items-center gap-1">
+        <Tip text={switchTip}>
+          <button
             type="button"
-            title="Отключить доступ"
-            onClick={() => setDeactivateOpen(true)}
-            whileTap={{ scale: 0.9 }}
-            className={`${ICON_BUTTON} hover:bg-status-cancelled-tint hover:text-status-cancelled`}
+            role="switch"
+            aria-checked={member.active}
+            aria-label={`Доступ: ${member.email ?? "сотрудник"}`}
+            disabled={isSelf || busy}
+            onClick={() => onToggleAccess(member)}
+            className="flex min-h-11 items-center px-1 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <UserX className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </motion.button>
-        )}
+            <span className={`relative h-[22px] w-[38px] rounded-full transition-colors duration-300 ${member.active ? "bg-claret" : "bg-line-strong"}`}>
+              <span
+                className={`absolute left-[3px] top-[3px] h-4 w-4 rounded-full bg-ink transition-transform duration-[400ms] ease-[cubic-bezier(.3,1.6,.5,1)] ${
+                  member.active ? "translate-x-4" : ""
+                }`}
+              />
+            </span>
+          </button>
+        </Tip>
+        <Tip text="Изменить email">
+          <button type="button" aria-label="Изменить email" onClick={() => setEmailOpen(true)} className={ICON_BUTTON}>
+            <Pencil className="h-4 w-4" strokeWidth={2} />
+          </button>
+        </Tip>
+        <Tip text="Сбросить пароль — письмо со ссылкой">
+          <button type="button" aria-label="Сбросить пароль" disabled={resetting} onClick={handleResetPassword} className={ICON_BUTTON}>
+            <KeyRound className="h-4 w-4" strokeWidth={2} />
+          </button>
+        </Tip>
       </div>
 
       <Modal open={emailOpen} onClose={() => setEmailOpen(false)} title="Изменить email">
         <EditEmailForm initialEmail={member.email} submitting={submitting} error={formError} onSubmit={handleEmailSubmit} />
       </Modal>
-
-      <ConfirmDialog
-        open={deactivateOpen}
-        onClose={() => setDeactivateOpen(false)}
-        onConfirm={handleDeactivate}
-        title="Отключение доступа"
-        message={`Отключить доступ для «${member.email}»? Он больше не сможет войти в панель персонала. Доступ можно будет вернуть, повторно пригласив этот email.`}
-        confirmLabel="Отключить"
-        danger
-      />
     </div>
   );
 }
