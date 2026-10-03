@@ -1,16 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
 import type { Session } from "@supabase/supabase-js";
 import { apiFetch, parseError } from "@/lib/api";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { candidateStartTimes, maxAdvanceBookingDateIso, restaurantTodayIso } from "@/lib/scheduling";
-import { formatDateShort, formatTime } from "@/lib/ru";
-import { GuestFloorPlan } from "./GuestFloorPlan";
+import type { HallObject } from "@/lib/floorPlan";
+import { GuestFloorPlan, guestTableState } from "./GuestFloorPlan";
 import { TableRow } from "./TableRow";
-import { TimeSlider } from "./TimeSlider";
-import { BookingSummaryBar } from "./BookingSummaryBar";
+import { BookingPanel } from "./BookingPanel";
 import { ConfirmStep } from "./ConfirmStep";
 import { SuccessCelebration } from "./SuccessCelebration";
 import { Modal } from "@/components/Modal";
@@ -19,12 +17,24 @@ import type { DiningTable } from "@/components/hostess/TableForm";
 
 type AvailabilitySlot = { table_id: number; start_time: string };
 
+type Confirmed = {
+  reservationId: number | null;
+  name: string;
+  email: string;
+  date: string;
+  time: string;
+  partySize: number;
+  tableLabel: string;
+  hallName: string;
+};
+
 export function BookingFlow({ session }: { session: Session | null }) {
   const [partySize, setPartySize] = useState(2);
   const [date, setDate] = useState(restaurantTodayIso());
 
   const [halls, setHalls] = useState<Hall[]>([]);
   const [tables, setTables] = useState<DiningTable[]>([]);
+  const [objectsByHall, setObjectsByHall] = useState<Map<number, HallObject[]>>(new Map());
   const [activeHallId, setActiveHallId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -39,9 +49,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<{ name: string; email: string; date: string; time: string } | null>(
-    null
-  );
+  const [confirmed, setConfirmed] = useState<Confirmed | null>(null);
 
   const loadFloorPlan = useCallback(async () => {
     setLoading(true);
@@ -68,11 +76,28 @@ export function BookingFlow({ session }: { session: Session | null }) {
     loadFloorPlan();
   }, [loadFloorPlan]);
 
+  // The hall's fixed objects (bar, entrance…) are decoration for the guest -
+  // fetched once per hall, and a failure just leaves the plan without them.
+  useEffect(() => {
+    if (activeHallId === null || objectsByHall.has(activeHallId)) return;
+    const hallId = activeHallId;
+    let cancelled = false;
+    fetch(`/api/halls/${hallId}/objects`)
+      .then((res) => (res.ok ? res.json() : []))
+      .catch(() => [])
+      .then((objects: HallObject[]) => {
+        if (!cancelled) setObjectsByHall((prev) => new Map(prev).set(hallId, objects));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeHallId, objectsByHall]);
+
   const candidateTimes = useMemo(() => candidateStartTimes(), []);
 
   // One shared availability fetch per date/party-size covers every table at
-  // once (the API supports omitting table_id) - both rows below read from
-  // it, so picking a different table never needs a new request.
+  // once (the API supports omitting table_id) - the plan, chips and time
+  // slots all read from it, so picking a different table never refetches.
   const availabilityRequestId = useRef(0);
   const loadAvailability = useCallback(async () => {
     const requestId = ++availabilityRequestId.current;
@@ -123,19 +148,36 @@ export function BookingFlow({ session }: { session: Session | null }) {
     () => bookableTables.filter((t) => t.hall_id === activeHallId),
     [bookableTables, activeHallId]
   );
-  const tableIdsWithAvailability = useMemo(() => new Set(availability.map((a) => a.table_id)), [availability]);
-  const unavailableTableIds = useMemo(
-    () => new Set(hallTables.filter((t) => !tableIdsWithAvailability.has(t.id)).map((t) => t.id)),
-    [hallTables, tableIdsWithAvailability]
+  const availableTableIds = useMemo(
+    () => (availabilityLoading || availabilityError ? null : new Set(availability.map((a) => a.table_id))),
+    [availability, availabilityLoading, availabilityError]
   );
+  const freeCountByHall = useMemo(() => {
+    const counts = new Map<number, number>();
+    if (!availableTableIds) return counts;
+    for (const hall of halls) {
+      counts.set(
+        hall.id,
+        bookableTables.filter((t) => t.hall_id === hall.id && guestTableState(t, partySize, null, availableTableIds) === "free")
+          .length
+      );
+    }
+    return counts;
+  }, [halls, bookableTables, partySize, availableTableIds]);
   const timesForSelectedTable = useMemo(() => {
     if (!selectedTable) return new Set<string>();
     return new Set(availability.filter((a) => a.table_id === selectedTable.id).map((a) => a.start_time));
   }, [availability, selectedTable]);
+  const maxPartySize = useMemo(
+    () => Math.max(1, ...bookableTables.map((t) => t.max_capacity)),
+    [bookableTables]
+  );
+  const hallName = (id: number | undefined) => halls.find((h) => h.id === id)?.name ?? "";
 
   function handleSelectTable(table: DiningTable) {
     setSelectedTable((current) => (current?.id === table.id ? null : table));
     setSelectedTime(null);
+    if (table.hall_id !== activeHallId) setActiveHallId(table.hall_id);
   }
 
   function handleSelectTime(time: string) {
@@ -163,13 +205,24 @@ export function BookingFlow({ session }: { session: Session | null }) {
         setSubmitError(await parseError(res));
         return;
       }
+      const created: { id?: number } = await res.json().catch(() => ({}));
       if (session) {
         createBrowserSupabaseClient()
           .auth.updateUser({ data: { full_name: fields.name, phone: fields.phone || null } })
           .catch(() => {});
       }
-      setConfirmed({ name: fields.name, email: fields.email, date, time: selectedTime });
+      setConfirmed({
+        reservationId: created.id ?? null,
+        name: fields.name,
+        email: fields.email,
+        date,
+        time: selectedTime,
+        partySize,
+        tableLabel: selectedTable.label,
+        hallName: hallName(selectedTable.hall_id),
+      });
       setConfirmOpen(false);
+      loadAvailability();
     } catch {
       setSubmitError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
     } finally {
@@ -177,122 +230,79 @@ export function BookingFlow({ session }: { session: Session | null }) {
     }
   }
 
-  if (confirmed) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", stiffness: 220, damping: 22 }}
-        className="rounded-2xl border border-line bg-surface p-8 text-center shadow-[var(--shadow-elevated)]"
-      >
-        <SuccessCelebration />
-        <p className="mt-4 text-xs uppercase tracking-[0.14em] text-status-confirmed">Заявка отправлена</p>
-        <p className="mt-2 font-display text-3xl text-ink text-balance">Спасибо, {confirmed.name}!</p>
-        <p className="mt-2 text-sm text-muted">
-          Столик на {formatDateShort(confirmed.date)} в {formatTime(confirmed.time)} ожидает подтверждения. Мы скоро с
-          вами свяжемся.
-        </p>
-
-        {!session && (
-          <div className="mt-6 rounded-xl border border-gold/30 bg-gold-tint px-4 py-3 text-left">
-            <p className="text-sm font-medium text-ink">Сохранить эти данные?</p>
-            <p className="mt-1 text-xs text-muted">
-              Создайте аккаунт — в следующий раз не нужно будет вводить их заново. (Эта бронь уже отправлена как
-              гостевая и останется у вас в брони по email/телефону.)
-            </p>
-            <a
-              href={`/account/register${confirmed.email ? `?email=${encodeURIComponent(confirmed.email)}` : ""}`}
-              className="mt-2 inline-block text-sm text-claret underline decoration-claret/40 underline-offset-4 hover:text-claret-strong"
-            >
-              Создать аккаунт →
-            </a>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => {
-            setConfirmed(null);
-            setSelectedTable(null);
-            setSelectedTime(null);
-          }}
-          className="mt-5 text-sm text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
-        >
-          Забронировать ещё
-        </button>
-      </motion.div>
-    );
-  }
+  const closeSuccess = useCallback(() => {
+    setConfirmed(null);
+    setSelectedTable(null);
+    setSelectedTime(null);
+  }, []);
 
   if (loading) {
-    return <div className="skeleton h-[420px] rounded-2xl border border-line" />;
+    return (
+      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="skeleton aspect-[16/11] rounded-[22px]" />
+        <div className="skeleton h-[560px] rounded-3xl" />
+      </div>
+    );
   }
   if (loadError) {
     return (
       <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-8 text-center text-sm text-status-cancelled">
-        {loadError}
+        {loadError}{" "}
+        <button type="button" onClick={loadFloorPlan} className="underline underline-offset-4">
+          Повторить
+        </button>
       </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-8 pb-24 sm:pb-0">
-      <GuestFloorPlan
-        halls={halls}
-        activeHallId={activeHallId}
-        onHallChange={setActiveHallId}
-        visibleTables={hallTables}
-        partySize={partySize}
-        selectedTableId={selectedTable?.id ?? null}
-        unavailableTableIds={availabilityLoading ? new Set() : unavailableTableIds}
-        onSelectTable={handleSelectTable}
-      />
-
-      <div className="flex flex-col gap-2.5">
-        <p className="font-display text-lg text-ink">Столы</p>
-        {availabilityLoading ? (
-          <div className="skeleton h-12 rounded-xl border border-line" />
-        ) : (
+    <>
+      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <section className="flex min-w-0 flex-col gap-[18px]" aria-label="Схема зала">
+          <GuestFloorPlan
+            halls={halls}
+            activeHallId={activeHallId}
+            onHallChange={setActiveHallId}
+            tables={hallTables}
+            objects={activeHallId !== null ? (objectsByHall.get(activeHallId) ?? []) : []}
+            freeCountByHall={freeCountByHall}
+            partySize={partySize}
+            selectedTableId={selectedTable?.id ?? null}
+            availableTableIds={availableTableIds}
+            onSelectTable={handleSelectTable}
+          />
           <TableRow
             tables={hallTables}
             partySize={partySize}
             selectedTableId={selectedTable?.id ?? null}
-            unavailableTableIds={unavailableTableIds}
+            availableTableIds={availableTableIds}
             onSelectTable={handleSelectTable}
           />
-        )}
-      </div>
+        </section>
 
-      <div className="flex flex-col gap-2.5">
-        <p className="font-display text-lg text-ink">Время</p>
-        {availabilityError ? (
-          <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-3 text-sm text-status-cancelled">
-            {availabilityError}
-          </p>
-        ) : availabilityLoading ? (
-          <div className="skeleton h-12 rounded-xl border border-line" />
-        ) : (
-          <TimeSlider
-            hasSelectedTable={Boolean(selectedTable)}
-            times={candidateTimes}
-            availableTimes={timesForSelectedTable}
-            value={selectedTime}
-            onChange={handleSelectTime}
-          />
-        )}
+        <BookingPanel
+          date={date}
+          today={restaurantTodayIso()}
+          maxDate={maxAdvanceBookingDateIso()}
+          onDateChange={setDate}
+          partySize={partySize}
+          maxPartySize={maxPartySize}
+          onPartySizeChange={setPartySize}
+          table={selectedTable}
+          hallName={hallName(selectedTable?.hall_id)}
+          onClearTable={() => {
+            setSelectedTable(null);
+            setSelectedTime(null);
+          }}
+          times={candidateTimes}
+          availableTimes={timesForSelectedTable}
+          availabilityLoading={availabilityLoading}
+          availabilityError={availabilityError}
+          time={selectedTime}
+          onTimeChange={handleSelectTime}
+          onSubmit={() => setConfirmOpen(true)}
+        />
       </div>
-
-      <BookingSummaryBar
-        date={date}
-        minDate={restaurantTodayIso()}
-        maxDate={maxAdvanceBookingDateIso()}
-        onDateChange={setDate}
-        partySize={partySize}
-        onPartySizeChange={setPartySize}
-        selectedTable={selectedTable}
-        selectedTime={selectedTime}
-        onSubmit={() => setConfirmOpen(true)}
-      />
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Подтверждение брони">
         {selectedTable && selectedTime && (
@@ -310,6 +320,23 @@ export function BookingFlow({ session }: { session: Session | null }) {
           />
         )}
       </Modal>
-    </div>
+
+      {confirmed && (
+        <SuccessCelebration
+          tableLabel={confirmed.tableLabel}
+          hallName={confirmed.hallName}
+          date={confirmed.date}
+          time={confirmed.time}
+          partySize={confirmed.partySize}
+          reservationId={confirmed.reservationId}
+          registerHref={
+            session
+              ? null
+              : `/account/register${confirmed.email ? `?email=${encodeURIComponent(confirmed.email)}` : ""}`
+          }
+          onClose={closeSuccess}
+        />
+      )}
+    </>
   );
 }

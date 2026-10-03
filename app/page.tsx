@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { CalendarCheck, LogOut, User } from "lucide-react";
+import { CalendarDays, LogIn, LogOut, User } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { BackgroundBlobs } from "@/components/guest/BackgroundBlobs";
-import { FloatingParticles } from "@/components/guest/FloatingParticles";
 import { BookingFlow } from "@/components/guest/BookingFlow";
+
+const NAV_LINK = "inline-flex min-h-11 items-center gap-1.5 text-[13px] text-[#c9b6ae] transition-colors hover:text-ink";
 
 export default function GuestPage() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -26,53 +26,50 @@ export default function GuestPage() {
   }
 
   return (
-    <main className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-8 sm:py-12">
-      <BackgroundBlobs />
-      <FloatingParticles />
-
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <p className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.2em] text-muted">
-          <CalendarCheck className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
-          TableFlow
-        </p>
-        {/* Sign-in is an optional add-on, never a gate: the flow below works
-            fully without a session - this is just a quiet way in. */}
-        <nav className="flex shrink-0 items-center gap-4 text-sm">
-          {session === undefined ? null : session ? (
-            <>
-              <a
-                href="/account"
-                className="flex items-center gap-1.5 text-claret underline decoration-claret/40 underline-offset-4 hover:text-claret-strong"
-              >
-                <User className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-                Мои брони
+    <div className="relative flex-1 overflow-hidden">
+      <div className="gp-lamp" aria-hidden="true" />
+      <main className="relative mx-auto flex w-full max-w-[1180px] flex-col gap-7 px-6 pb-16 pt-7">
+        <header className="flex items-center justify-between gap-4">
+          <p className="flex items-center gap-2.5 font-mono text-xs tracking-[0.28em] text-[#c9b6ae]">
+            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[7px] border border-[#4a3833]">
+              <CalendarDays className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
+            </span>
+            TABLEFLOW
+          </p>
+          {/* Sign-in is an optional add-on, never a gate: the flow below works
+              fully without a session - this is just a quiet way in. */}
+          <nav className="flex items-center gap-5" aria-label="Аккаунт">
+            {session === undefined ? null : session ? (
+              <>
+                <a href="/account" className={NAV_LINK}>
+                  <User className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+                  Мои брони
+                </a>
+                <button type="button" onClick={handleSignOut} className={NAV_LINK}>
+                  <LogOut className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+                  Выйти
+                </button>
+              </>
+            ) : (
+              <a href="/account/login" className={NAV_LINK}>
+                <LogIn className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+                Войти
               </a>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="flex items-center gap-1.5 text-muted underline decoration-line underline-offset-4 transition-colors hover:text-ink"
-              >
-                <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-                Выйти
-              </button>
-            </>
-          ) : (
-            <a
-              href="/account/login"
-              className="text-claret underline decoration-claret/40 underline-offset-4 hover:text-claret-strong"
-            >
-              Войти
-            </a>
-          )}
-        </nav>
-      </div>
+            )}
+          </nav>
+        </header>
 
-      <h1 className="text-balance font-display text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-        Забронируйте столик
-      </h1>
-      <p className="mt-3 mb-10 text-pretty text-muted">Выберите стол на схеме зала, дату и время — мы всё подготовим.</p>
+        <div className="flex flex-col gap-3">
+          <h1 className="animate-[gp-up_.7s_cubic-bezier(.2,.8,.2,1)_both] font-display text-[clamp(38px,5vw,60px)] font-normal leading-[1.02] tracking-[-0.02em] text-balance">
+            Забронируйте <em className="gp-underline italic text-claret">столик</em>
+          </h1>
+          <p className="max-w-[520px] animate-[gp-up_.7s_.1s_cubic-bezier(.2,.8,.2,1)_both] text-[15px] text-muted">
+            Наведите на стол — увидите места. Выберите стол, дату и время, остальное мы подготовим.
+          </p>
+        </div>
 
-      <BookingFlow session={session ?? null} />
-    </main>
+        <BookingFlow session={session ?? null} />
+      </main>
+    </div>
   );
 }

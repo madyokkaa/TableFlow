@@ -817,3 +817,376 @@ body {
   display: block;
   font-size: 0;
 }
+
+/* =====================================================================
+   Guest booking plan - same geometry as the staff editor (lib/floorPlan),
+   read-only, with hover/selection feedback.
+   ===================================================================== */
+.gp-plan {
+  position: relative;
+  container-type: inline-size;
+  min-width: 560px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 22px;
+  overflow: hidden;
+  animation: fp-fadein 0.5s both;
+}
+.gp-plan .fp-obj {
+  pointer-events: none;
+}
+.gp-tbl {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 2;
+}
+.gp-tbl:hover,
+.gp-tbl:focus-visible {
+  z-index: 6;
+  outline: none;
+}
+.gp-in {
+  position: absolute;
+  inset: 0;
+  animation: gp-pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
+}
+@keyframes gp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.55) translateY(14px);
+  }
+}
+.gp-top {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #2a1f1c;
+  border: 1px solid #4a3833;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-ink);
+  transition:
+    background 0.35s,
+    border-color 0.35s,
+    transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1),
+    box-shadow 0.35s,
+    color 0.35s;
+}
+.gp-tbl.round .gp-top {
+  border-radius: 50%;
+}
+.gp-tbl.rectangle .gp-top,
+.gp-tbl.square .gp-top {
+  border-radius: 16px;
+}
+.gp-txt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.gp-num {
+  font-family: var(--font-display), Georgia, serif;
+  line-height: 1;
+}
+.gp-cap {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  color: var(--color-muted);
+  transition: color 0.35s;
+}
+.gp-tbl.free:hover .gp-top,
+.gp-tbl.free:focus-visible .gp-top {
+  transform: scale(1.06);
+  border-color: #8a6a62;
+  box-shadow: 0 16px 34px -12px rgb(0 0 0 / 0.8);
+}
+.gp-tbl:focus-visible .gp-top {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 5px;
+}
+.gp-tbl.sel .gp-top {
+  background: var(--color-claret);
+  border-color: var(--color-claret);
+  color: var(--color-on-accent);
+  transform: scale(1.08);
+  box-shadow:
+    0 0 0 6px rgb(236 143 163 / 0.16),
+    0 20px 44px -14px var(--color-claret);
+}
+.gp-tbl.sel .gp-cap {
+  color: #5a2333;
+}
+.gp-tbl.booked,
+.gp-tbl.small {
+  cursor: not-allowed;
+}
+.gp-tbl.booked .gp-top {
+  background: repeating-linear-gradient(45deg, #1d1513 0 6px, #231a18 6px 12px);
+  border-style: dashed;
+  color: #8f7c75;
+}
+.gp-tbl.booked .gp-cap {
+  color: #8f7c75;
+}
+.gp-tbl.small .gp-top {
+  opacity: 0.45;
+}
+.gp-dot {
+  position: absolute;
+  top: 18%;
+  right: 18%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-status-confirmed);
+  animation: gp-breathe 2.4s ease-in-out infinite;
+}
+.gp-tbl.rectangle .gp-dot {
+  top: 10px;
+  right: 10px;
+}
+.gp-tbl.sel .gp-dot,
+.gp-tbl.booked .gp-dot,
+.gp-tbl.small .gp-dot {
+  display: none;
+}
+@keyframes gp-breathe {
+  0% {
+    box-shadow: 0 0 0 0 rgb(127 209 161 / 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgb(127 209 161 / 0);
+    opacity: 0.6;
+  }
+}
+.gp-ring {
+  position: absolute;
+  inset: -12px;
+  border: 2px solid var(--color-claret);
+  opacity: 0;
+  pointer-events: none;
+}
+.gp-tbl.round .gp-ring {
+  border-radius: 50%;
+}
+.gp-tbl.rectangle .gp-ring,
+.gp-tbl.square .gp-ring {
+  border-radius: 24px;
+}
+.gp-tbl.sel .gp-ring {
+  animation: gp-ripple 1.9s ease-out infinite;
+}
+@keyframes gp-ripple {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+/* Chairs: --d is the resting distance from the table's centre, --push how
+   far they slide out on hover/selection (both set inline in cqw). */
+.gp-seat {
+  position: absolute;
+  border-radius: 7px 7px 4px 4px;
+  background: #3b2c28;
+  border: 1px solid #57423c;
+  transform: translateY(calc(var(--d) * -1));
+  transition:
+    transform 0.5s cubic-bezier(0.3, 1.5, 0.5, 1),
+    background 0.35s,
+    border-color 0.35s,
+    opacity 0.35s;
+}
+.gp-tbl.free:hover .gp-seat,
+.gp-tbl.free:focus-visible .gp-seat,
+.gp-tbl.sel .gp-seat {
+  transform: translateY(calc((var(--d) + var(--push)) * -1));
+}
+.gp-tbl.sel .gp-seat {
+  background: #b86a7c;
+  border-color: var(--color-claret);
+}
+.gp-tbl.booked .gp-seat {
+  opacity: 0.25;
+}
+.gp-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 20px);
+  transform: translate(-50%, 8px);
+  opacity: 0;
+  white-space: nowrap;
+  background: var(--color-ink);
+  color: #1d1614;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 11px;
+  border-radius: 9px;
+  pointer-events: none;
+  transition:
+    opacity 0.2s,
+    transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+  z-index: 10;
+}
+.gp-tip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: var(--color-ink);
+}
+.gp-tbl:hover .gp-tip,
+.gp-tbl:focus-visible .gp-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Guest page ambient glow and the shining primary button. */
+@keyframes gp-drift {
+  to {
+    transform: translate(-120px, 80px);
+  }
+}
+.gp-lamp {
+  position: absolute;
+  width: 760px;
+  height: 760px;
+  right: -260px;
+  top: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(236 143 163 / 0.09), rgb(236 143 163 / 0) 65%);
+  pointer-events: none;
+  animation: gp-drift 16s ease-in-out infinite alternate;
+}
+@keyframes gp-shine {
+  60%,
+  100% {
+    left: 120%;
+  }
+}
+.gp-shine:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  left: -80px;
+  background: rgb(255 255 255 / 0.35);
+  transform: skewX(-20deg);
+  animation: gp-shine 2.8s ease-in-out infinite;
+}
+@keyframes gp-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+.gp-underline {
+  position: relative;
+  white-space: nowrap;
+}
+.gp-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.04em;
+  height: 2px;
+  background: currentColor;
+  transform-origin: left;
+  animation: gp-draw 1s 0.5s cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+@keyframes gp-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+@keyframes gp-bump {
+  from {
+    transform: translateY(-8px) scale(0.8);
+    opacity: 0.3;
+  }
+}
+@keyframes gp-slide {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes gp-slot {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+}
+@keyframes gp-float {
+  to {
+    transform: translateY(-4px);
+  }
+}
+@keyframes gp-drop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -160%);
+  }
+}
+@keyframes gp-open {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes gp-line {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes gp-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+/* Empty-state table: each chair breathes out and back from its own side. */
+@keyframes gp-chair {
+  0%,
+  100% {
+    transform: rotate(var(--a)) translateY(-38px);
+  }
+  50% {
+    transform: rotate(var(--a)) translateY(-50px);
+  }
+}
+@keyframes gp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.92);
+  }
+}
+@keyframes gp-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes gp-fly {
+  0% {
+    transform: translateY(0) scale(0);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(-40px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-82px) scale(0.6) rotate(140deg);
+    opacity: 0;
+  }
+}
