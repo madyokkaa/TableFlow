@@ -130,7 +130,14 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
         // Same wrong-password-vs-unknown-email ambiguity as the hostess
         // login, for the same reason: don't let this form be used to check
         // which emails have an account.
-        fail(error.message.toLowerCase().includes("invalid") ? "Неверный email или пароль." : error.message);
+        if (!error.message.toLowerCase().includes("invalid")) {
+          console.error("[account/login] signInWithPassword failed", error);
+        }
+        fail(
+          error.message.toLowerCase().includes("invalid")
+            ? "Неверный email или пароль."
+            : "Не удалось войти. Проверьте соединение и попробуйте ещё раз."
+        );
         return;
       }
       signedIn();

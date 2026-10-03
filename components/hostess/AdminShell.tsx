@@ -8,6 +8,7 @@ import type { Session } from "@supabase/supabase-js";
 import { CalendarDays, ChevronLeft, DoorOpen, LayoutDashboard, LogOut, Users } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { unlockAudio } from "@/lib/notificationSound";
+import { clearStaffDevice, staffDeviceExpired } from "@/lib/staffDevice";
 import { usePendingReservations } from "@/hooks/usePendingReservations";
 import { useOccupancyNow } from "@/hooks/useOccupancyNow";
 import { restaurantNowMinutes, restaurantTodayIso } from "@/lib/scheduling";
@@ -166,6 +167,13 @@ export function AdminShell({ children, wide = false }: { children: React.ReactNo
         router.replace("/hostess/login");
         return;
       }
+      if (staffDeviceExpired()) {
+        // Signed in without "remember this device" and the browser has
+        // been closed since - end that shift.
+        clearStaffDevice();
+        supabase.auth.signOut();
+        return;
+      }
       setSession(data.session);
     });
     const {
@@ -205,6 +213,7 @@ export function AdminShell({ children, wide = false }: { children: React.ReactNo
   async function handleSignOut() {
     const supabase = createBrowserSupabaseClient();
     await supabase.auth.signOut();
+    clearStaffDevice();
     router.replace("/hostess/login");
   }
 

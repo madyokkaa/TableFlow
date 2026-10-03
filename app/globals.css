@@ -1384,3 +1384,76 @@ body {
   stroke-dashoffset: 60;
   animation: gp-stroke 0.45s 0.7s cubic-bezier(0.6, 0, 0.2, 1) forwards;
 }
+
+/* ---- Staff login: the hall plan being scanned while the shift is closed ---- */
+@keyframes sl-scan {
+  to {
+    left: 100%;
+  }
+}
+@keyframes sl-lit {
+  0% {
+    border-color: var(--color-claret);
+    color: var(--color-ink);
+    box-shadow: 0 0 0 0.6cqw rgb(236 143 163 / 0.15);
+  }
+  18%,
+  100% {
+    border-color: var(--color-line-strong);
+    color: #8f7c75;
+    box-shadow: none;
+  }
+}
+@keyframes sl-lit-ok {
+  from {
+    scale: 0.7;
+  }
+}
+@keyframes sl-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+@keyframes sl-shake {
+  20% {
+    transform: translateX(-10px);
+  }
+  40% {
+    transform: translateX(9px);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+.sl-scan {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  left: -18%;
+  background: linear-gradient(90deg, rgb(236 143 163 / 0), rgb(236 143 163 / 0.14));
+  border-right: 2px solid var(--color-claret);
+  animation: sl-scan 4s linear infinite;
+  pointer-events: none;
+}
+.sl-table {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: max(8px, 1.5cqw);
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-surface-raised);
+  color: #8f7c75;
+  animation: sl-lit 4s linear infinite both;
+}
+.sl-ok .sl-table {
+  animation: sl-lit-ok 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  border-color: var(--color-status-confirmed);
+  color: #a8dcbc;
+  background: #18241c;
+}

@@ -137,7 +137,7 @@ export function AuthField({
           {...input}
           id={id}
           aria-describedby={hint ? `${id}-hint` : undefined}
-          className="h-[50px] w-full rounded-[14px] border border-line-strong bg-paper pl-[42px] pr-[46px] text-[15px] font-normal outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#6f5d57] focus:border-claret focus:shadow-[0_0_0_4px_rgb(236_143_163/0.12)]"
+          className="h-[50px] w-full rounded-[14px] border border-line-strong bg-paper pl-[42px] pr-[46px] text-[15px] font-normal outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#6f5d57] focus:border-claret focus:shadow-[0_0_0_4px_rgb(236_143_163/0.12)] aria-invalid:border-status-cancelled aria-invalid:shadow-[0_0_0_4px_rgb(232_128_111/0.12)]"
         />
         {trailing ??
           (ok && (
