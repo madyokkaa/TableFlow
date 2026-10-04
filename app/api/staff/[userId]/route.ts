@@ -46,11 +46,36 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   }
 
   const { userId } = await context.params;
+  // ?permanent=1 removes the staff row instead of switching it off, so the
+  // person disappears from the staff list. Their auth account stays - it
+  // may have its own guest bookings, and reservations.created_by points at
+  // it - so they simply become a regular guest and can be re-invited later.
+  const permanent = request.nextUrl.searchParams.get("permanent") === "1";
   if (userId === staff.id) {
-    return NextResponse.json({ error: "нельзя отключить собственный доступ" }, { status: 400 });
+    return NextResponse.json(
+      { error: permanent ? "нельзя удалить самого себя" : "нельзя отключить собственный доступ" },
+      { status: 400 }
+    );
   }
 
   const admin = createAdminClient();
+
+  if (permanent) {
+    const { error: removeError, count: removed } = await admin
+      .from("staff")
+      .delete({ count: "exact" })
+      .eq("user_id", userId);
+    if (removeError) {
+      console.error("[staff.remove] delete failed", removeError);
+      return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
+    }
+    if (!removed) {
+      return NextResponse.json({ error: "сотрудник не найден" }, { status: 404 });
+    }
+    console.info("[staff.remove] removed", { actor: staff.id, target: userId });
+    return new NextResponse(null, { status: 204 });
+  }
+
   const { error, count } = await admin
     .from("staff")
     .update({ active: false }, { count: "exact" })

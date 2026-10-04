@@ -222,6 +222,14 @@ function StaffPageContent() {
     }
   }
 
+  // Errors are thrown so the confirmation dialog shows them in place.
+  async function remove(member: StaffMember) {
+    const res = await apiFetch(`/api/staff/${member.user_id}?permanent=1`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await parseError(res));
+    setStaff((prev) => prev?.filter((m) => m.user_id !== member.user_id) ?? prev);
+    notify(`${member.email ?? "Сотрудник"} удалён из персонала`);
+  }
+
   function handleInvited(email: string, promoted: boolean) {
     setInviteOpen(false);
     notify(
@@ -285,6 +293,7 @@ function StaffPageContent() {
               isSelf={member.user_id === myUserId}
               busy={busyIds.has(member.user_id)}
               onToggleAccess={(m) => (m.active ? disable(m) : enable(m))}
+              onRemove={remove}
               onChanged={load}
               notify={notify}
             />

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import { KeyRound, Pencil } from "lucide-react";
+import { KeyRound, Pencil, Trash2 } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
 import { formatDateLong } from "@/lib/ru";
 import { Modal } from "@/components/Modal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { INPUT } from "./hall-editor/controls";
 
 export type StaffMember = { user_id: string; email: string | null; active: boolean; created_at: string };
@@ -71,14 +72,15 @@ function EditEmailForm({
 
 /** One staff account: avatar with an online dot, email and since-date,
  * status pill, access switch (not for yourself), edit email and send a
- * password-reset link. Access changes are reported back to the page, which
- * owns the request and the toast with «Вернуть». */
+ * password-reset link, remove from staff. Access changes and removal are
+ * reported back to the page, which owns those requests and their toasts. */
 export function StaffRow({
   member,
   isSelf,
   busy,
   index,
   onToggleAccess,
+  onRemove,
   onChanged,
   notify,
 }: {
@@ -87,6 +89,7 @@ export function StaffRow({
   busy: boolean;
   index: number;
   onToggleAccess: (member: StaffMember) => void;
+  onRemove: (member: StaffMember) => Promise<void>;
   onChanged: () => void;
   notify: (message: string, tone?: "ok" | "error") => void;
 }) {
@@ -94,6 +97,7 @@ export function StaffRow({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
 
   async function handleEmailSubmit(email: string) {
     setSubmitting(true);
@@ -182,7 +186,30 @@ export function StaffRow({
             <KeyRound className="h-4 w-4" strokeWidth={2} />
           </button>
         </Tip>
+        {!isSelf && (
+          <Tip text="Удалить сотрудника">
+            <button
+              type="button"
+              aria-label={`Удалить сотрудника ${member.email ?? ""}`}
+              disabled={busy}
+              onClick={() => setRemoveOpen(true)}
+              className={`${ICON_BUTTON} hover:bg-status-cancelled-tint hover:text-status-cancelled`}
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </Tip>
+        )}
       </div>
+
+      <ConfirmDialog
+        open={removeOpen}
+        onClose={() => setRemoveOpen(false)}
+        onConfirm={() => onRemove(member)}
+        title="Удаление сотрудника"
+        message={`Удалить «${member.email ?? "сотрудника"}» из персонала? Он сразу потеряет доступ к панели и исчезнет из списка. Его гостевой аккаунт и брони останутся — при необходимости его можно пригласить снова.`}
+        confirmLabel="Удалить"
+        danger
+      />
 
       <Modal open={emailOpen} onClose={() => setEmailOpen(false)} title="Изменить email">
         <EditEmailForm initialEmail={member.email} submitting={submitting} error={formError} onSubmit={handleEmailSubmit} />
