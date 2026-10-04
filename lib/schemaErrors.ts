@@ -7,8 +7,10 @@ export function isMissingSchemaError(error: { code?: string } | null | undefined
   return (
     error.code === "PGRST204" || // column not in PostgREST's schema cache
     error.code === "PGRST205" || // table not in PostgREST's schema cache
+    error.code === "PGRST202" || // function not in PostgREST's schema cache
     error.code === "42703" || // undefined_column
-    error.code === "42P01" // undefined_table
+    error.code === "42P01" || // undefined_table
+    error.code === "42883" // undefined_function
   );
 }
 

@@ -63,31 +63,34 @@ export async function GET(request: NextRequest) {
   if (tableId !== null) {
     tablesQuery = tablesQuery.eq("id", tableId);
   }
-  const { data: tables, error: tablesError } = await tablesQuery;
+  // The day's active bookings are fetched for every table at once, in
+  // parallel with the tables query, instead of waiting for the table ids
+  // first - one round trip instead of two in a row.
+  let bookingsQuery = supabase
+    .from("reservation_tables")
+    .select("table_id, reservations!inner(date, start_time, duration_minutes, status)")
+    .eq("reservations.date", dateStr)
+    .in("reservations.status", ["pending", "confirmed"]);
+  if (tableId !== null) {
+    bookingsQuery = bookingsQuery.eq("table_id", tableId);
+  }
+  const [{ data: tables, error: tablesError }, { data: bookings, error: bookingsError }] = await Promise.all([
+    tablesQuery,
+    bookingsQuery,
+  ]);
 
   if (tablesError) {
     console.error("[availability] table query failed", tablesError);
     return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
-
-  const tableIds = (tables as unknown as TableRow[]).map((t) => t.id);
-  let activeReservations: ActiveReservation[] = [];
-  if (tableIds.length > 0) {
-    const { data, error } = await supabase
-      .from("reservation_tables")
-      .select("table_id, reservations!inner(date, start_time, duration_minutes, status)")
-      .in("table_id", tableIds)
-      .eq("reservations.date", dateStr)
-      .in("reservations.status", ["pending", "confirmed"]);
-
-    if (error) {
-      console.error("[availability] reservation query failed", error);
-      return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
-    }
-    activeReservations = (data as unknown as { table_id: number; reservations: { start_time: string; duration_minutes: number } }[]).map(
-      (row) => ({ table_id: row.table_id, start_time: row.reservations.start_time, duration_minutes: row.reservations.duration_minutes })
-    );
+  if (bookingsError) {
+    console.error("[availability] reservation query failed", bookingsError);
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
+
+  const activeReservations: ActiveReservation[] = (
+    bookings as unknown as { table_id: number; reservations: { start_time: string; duration_minutes: number } }[]
+  ).map((row) => ({ table_id: row.table_id, start_time: row.reservations.start_time, duration_minutes: row.reservations.duration_minutes }));
 
   // "No bookings in the past" - compared in the restaurant's own local
   // time, not the server's UTC. Comparing a restaurant wall-clock slot

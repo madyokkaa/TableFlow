@@ -25,17 +25,16 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
   try {
-    // Past-due pending/confirmed reservations shouldn't read as still
-    // active in "Брони сегодня" or the trend/no-show aggregates below.
-    await completeExpiredReservations(supabase);
-
-    const occupancy = await getOccupancyNow(supabase);
-    const [today, weekly, periodStats, upcoming, halls] = await Promise.all([
-      getTodaySummary(supabase),
-      getWeeklyKpis(supabase),
-      getPeriodStats(supabase, period),
-      getUpcoming(supabase),
-      getHallOccupancy(supabase, occupancy),
+    // Two independent chains in parallel. Past-due pending/confirmed
+    // reservations shouldn't read as still active in "Брони сегодня" or the
+    // trend/no-show aggregates, so those wait for the clean-up; the live
+    // floor figures don't need to - a booking whose time has passed covers
+    // no "now" anyway.
+    const [[today, weekly, periodStats, upcoming], [occupancy, halls]] = await Promise.all([
+      completeExpiredReservations(supabase).then(() =>
+        Promise.all([getTodaySummary(supabase), getWeeklyKpis(supabase), getPeriodStats(supabase, period), getUpcoming(supabase)])
+      ),
+      getOccupancyNow(supabase).then(async (occ) => [occ, await getHallOccupancy(supabase, occ)] as const),
     ]);
 
     const body: DashboardStats = {

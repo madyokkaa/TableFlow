@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { restaurantTodayIso, restaurantNowMinutes, timeToMinutes } from "@/lib/scheduling";
 import { RESERVATION_STATUSES, type ReservationStatus } from "@/lib/reservations";
+import { isMissingSchemaError } from "@/lib/schemaErrors";
 import { parseTstzRange } from "./dateUtils";
 import type { LiveTableState, StatusCounts } from "./types";
 
@@ -24,25 +25,40 @@ export async function getTodaySummary(supabase: SupabaseClient) {
 
 type OccupiedTable = { id: number; hall_id: number; manual_status: string | null };
 
-/** Which active tables are occupied *right now* - either a staff walk-in
- * override (`manual_status`) or a pending/confirmed reservation whose time
- * range contains this instant. Returns the raw table list too, so
- * getHallOccupancy can group the same computation by hall without a second
- * round trip. */
-export async function getOccupancyNow(supabase: SupabaseClient) {
-  const [{ data: tables, error: tablesError }, { data: activeRows, error: rtError }] = await Promise.all([
-    supabase.from("dining_tables").select("id, hall_id, is_active, manual_status"),
-    supabase.from("reservation_tables").select("table_id, time_range").in("status", ["pending", "confirmed"]),
-  ]);
-  if (tablesError) throw tablesError;
-  if (rtError) throw rtError;
+/** Ids of tables with a pending/confirmed booking covering this instant.
+ * The database answers this directly (tables_reserved_now, index-backed);
+ * on a database without that function yet it falls back to reading every
+ * active reservation_tables row and checking the time here. */
+async function tablesReservedNow(supabase: SupabaseClient): Promise<Set<number>> {
+  const { data, error } = await supabase.rpc("tables_reserved_now");
+  if (!error) return new Set((data as number[] | null) ?? []);
+  if (!isMissingSchemaError(error)) throw error;
 
+  const { data: activeRows, error: rtError } = await supabase
+    .from("reservation_tables")
+    .select("table_id, time_range")
+    .in("status", ["pending", "confirmed"]);
+  if (rtError) throw rtError;
   const now = Date.now();
   const reservedNow = new Set<number>();
   for (const row of activeRows ?? []) {
     const bounds = parseTstzRange(String(row.time_range));
     if (bounds && now >= bounds.start && now < bounds.end) reservedNow.add(row.table_id as number);
   }
+  return reservedNow;
+}
+
+/** Which active tables are occupied *right now* - either a staff walk-in
+ * override (`manual_status`) or a pending/confirmed reservation whose time
+ * range contains this instant. Returns the raw table list too, so
+ * getHallOccupancy can group the same computation by hall without a second
+ * round trip. */
+export async function getOccupancyNow(supabase: SupabaseClient) {
+  const [{ data: tables, error: tablesError }, reservedNow] = await Promise.all([
+    supabase.from("dining_tables").select("id, hall_id, is_active, manual_status"),
+    tablesReservedNow(supabase),
+  ]);
+  if (tablesError) throw tablesError;
 
   const active: OccupiedTable[] = (tables ?? []).filter((t) => t.is_active);
   let occupied = 0;

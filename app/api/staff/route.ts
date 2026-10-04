@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { isMissingSchemaError } from "@/lib/schemaErrors";
 
 // Staff-only: list every staff account (email + active flag) so the
 // hostess panel can show who already has access before adding someone new.
@@ -12,6 +13,17 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  // One query joining auth.users (list_staff_with_email, service-role only).
+  // On a database without that function yet, fall back to one auth lookup
+  // per staff row below.
+  const { data: joined, error: rpcError } = await admin.rpc("list_staff_with_email");
+  if (!rpcError) return NextResponse.json(joined);
+  if (!isMissingSchemaError(rpcError)) {
+    console.error("[staff.list] list_staff_with_email failed", rpcError);
+    return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
+  }
+
   const { data: rows, error } = await admin
     .from("staff")
     .select("user_id, active, created_at")

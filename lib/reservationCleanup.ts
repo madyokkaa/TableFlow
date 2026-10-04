@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { restaurantTodayIso, addDaysIso } from "@/lib/scheduling";
+import { isMissingSchemaError } from "@/lib/schemaErrors";
 
 // How long a fully-resolved reservation (completed/cancelled/no-show) is
 // kept before it's hard-deleted. Long enough that the dashboard's 30-day
@@ -27,6 +28,13 @@ function reservationEndMs(date: string, startTime: string, durationMinutes: numb
  * trigger. Idempotent and non-destructive, so it's safe to call
  * opportunistically on reads, not just before a delete. */
 export async function completeExpiredReservations(supabase: SupabaseClient): Promise<void> {
+  // One round trip: the same update done in SQL (see the
+  // 20261004120000_performance migration). Falls back to the select-then-
+  // update below on a database that doesn't have the function yet.
+  const { error: rpcError } = await supabase.rpc("complete_expired_reservations");
+  if (!rpcError) return;
+  if (!isMissingSchemaError(rpcError)) throw rpcError;
+
   const today = restaurantTodayIso();
   const { data, error } = await supabase
     .from("reservations")
