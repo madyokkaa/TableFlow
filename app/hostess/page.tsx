@@ -35,7 +35,7 @@ const STATUS_CHIPS: { value: ReservationStatus | "all"; label: string; always?: 
   { value: "no-show", label: "Не пришли" },
 ];
 
-type DeferredOp = { status: "confirmed" | "cancelled"; timer: number };
+type DeferredOp = { status: "confirmed" | "cancelled"; reason: string | null; timer: number };
 
 function dayLabel(iso: string): string {
   const today = restaurantTodayIso();
@@ -245,7 +245,7 @@ function ReservationsPageContent() {
       try {
         const res = await apiFetch(`/api/reservations/${id}`, {
           method: "PATCH",
-          body: JSON.stringify(op.status === "cancelled" ? { status: "cancelled", cancellation_reason: null } : { status: "confirmed" }),
+          body: JSON.stringify(op.status === "cancelled" ? { status: "cancelled", cancellation_reason: op.reason } : { status: "confirmed" }),
           keepalive: true,
         });
         if (!res.ok) {
@@ -279,11 +279,11 @@ function ReservationsPageContent() {
     };
   }, []);
 
-  function scheduleStatus(reservation: Reservation, status: "confirmed" | "cancelled") {
+  function scheduleStatus(reservation: Reservation, status: "confirmed" | "cancelled", reason: string | null = null) {
     const previous = deferredRef.current.get(reservation.id);
     if (previous) window.clearTimeout(previous.timer);
     const timer = window.setTimeout(() => commit(reservation.id), UNDO_MS);
-    deferredRef.current.set(reservation.id, { status, timer });
+    deferredRef.current.set(reservation.id, { status, reason, timer });
     setOverrides((prev) => new Map(prev).set(reservation.id, status));
     pulseHighlight(reservation.id);
     show(
@@ -303,19 +303,12 @@ function ReservationsPageContent() {
     );
   }
 
-  async function handleReject(reason: string | null) {
+  // Rejecting - from the row's ✕ or the drawer - always asks for an
+  // optional reason first, then goes through the same undo window as ✓.
+  function handleReject(reason: string | null) {
     if (!rejectingReservation) return;
-    const res = await apiFetch(`/api/reservations/${rejectingReservation.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "cancelled", cancellation_reason: reason }),
-    });
-    if (!res.ok) {
-      throw new Error(await parseError(res));
-    }
-    pulseHighlight(rejectingReservation.id);
-    show(`Бронь ${rejectingReservation.guest_name} отклонена`);
     setDrawer(null);
-    load();
+    scheduleStatus(rejectingReservation, "cancelled", reason);
   }
 
   const shown = useMemo(
@@ -548,7 +541,7 @@ function ReservationsPageContent() {
                 highlighted={highlightedIds.has(reservation.id)}
                 index={index}
                 onAccept={() => scheduleStatus(reservation, "confirmed")}
-                onReject={() => scheduleStatus(reservation, "cancelled")}
+                onReject={() => setRejectingReservation(reservation)}
                 onEdit={() => openDrawer({ kind: "edit", reservation })}
               />
             ))

@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Modal } from "./Modal";
-import { Combobox } from "./Combobox";
 import { OTHER_REASON } from "@/lib/reservations";
 
-/** Cancel/reject confirmation with an optional reason combobox - shared by
- * the guest's own cancel flow and the hostess's reject flow, each passing
- * its own `reasons` list (the two contexts mean genuinely different things
- * by "why"). Confirming without picking a reason is always allowed; picking
- * "Другое" reveals a free-text field instead of forcing one of the presets. */
+const CHIP =
+  "inline-flex min-h-11 items-center rounded-[13px] border px-3.5 py-2 text-left text-[13px] font-semibold transition-[border-color,background-color,color] duration-200";
+
+/** Cancel/reject confirmation with an optional reason, picked from a row of
+ * chips (a dropdown here would be clipped by the modal's scroll area).
+ * Confirming without picking a reason is always allowed; picking "Другое"
+ * reveals a free-text field instead of forcing one of the presets. */
 export function CancelReservationDialog({
   open,
   onClose,
@@ -60,22 +61,32 @@ export function CancelReservationDialog({
     }
   }
 
-  const options = [...reasons.map((r) => ({ value: r, label: r })), { value: OTHER_REASON, label: OTHER_REASON }];
-
   return (
     <Modal open={open} onClose={handleClose} title={title}>
       <p className="text-pretty text-sm text-muted">{message}</p>
 
-      <label className="mt-4 flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Причина (необязательно)</span>
-        <Combobox
-          ariaLabel="Причина отмены"
-          placeholder="Не указывать"
-          options={options}
-          value={reason}
-          onChange={setReason}
-        />
-      </label>
+      <p className="mt-4 text-[13px] font-semibold text-ink">Причина (необязательно)</p>
+      <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Причина отмены">
+        {[...reasons, OTHER_REASON].map((r) => {
+          const on = reason === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => setReason((current) => (current === r ? null : r))}
+              className={`${CHIP} ${
+                on
+                  ? "border-status-cancelled bg-status-cancelled-tint text-status-cancelled"
+                  : "border-line-strong text-ink/90 hover:border-[#8a6a62] hover:bg-surface-raised"
+              }`}
+            >
+              {r}
+            </button>
+          );
+        })}
+      </div>
 
       <AnimatePresence initial={false}>
         {reason === OTHER_REASON && (
@@ -92,21 +103,26 @@ export function CancelReservationDialog({
               maxLength={500}
               rows={2}
               autoFocus
+              aria-label="Своя причина"
               placeholder="Опишите причину…"
-              className="w-full resize-none rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-claret"
+              className="w-full resize-none rounded-[13px] border border-line-strong bg-[#1a1311] px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-claret"
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {error && <p className="mt-3 rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 rounded-[13px] bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">
+          {error}
+        </p>
+      )}
 
-      <div className="mt-6 flex justify-end gap-3">
+      <div className="mt-6 flex justify-end gap-2.5">
         <button
           type="button"
           onClick={handleClose}
           disabled={pending}
-          className="inline-flex h-10 items-center justify-center rounded-lg border border-line px-4 text-sm font-medium text-ink transition-colors hover:bg-paper disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center rounded-[13px] border border-line-strong px-4 text-sm font-semibold text-ink/90 transition-colors hover:border-[#8a6a62] hover:bg-surface-raised disabled:opacity-50"
         >
           Назад
         </button>
@@ -114,7 +130,7 @@ export function CancelReservationDialog({
           type="button"
           onClick={handleConfirm}
           disabled={pending}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-status-cancelled px-4 text-sm font-medium text-on-accent transition-[background-color,transform] duration-150 ease-out hover:brightness-90 active:scale-[0.98] disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center rounded-[13px] bg-status-cancelled px-[18px] text-sm font-bold text-on-accent transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50"
         >
           {pending ? "Выполняем…" : confirmLabel}
         </button>
