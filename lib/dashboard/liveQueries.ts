@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { restaurantTodayIso, restaurantNowMinutes, timeToMinutes } from "@/lib/scheduling";
 import { RESERVATION_STATUSES, type ReservationStatus } from "@/lib/reservations";
 import { parseTstzRange } from "./dateUtils";
-import type { StatusCounts } from "./types";
+import type { LiveTableState, StatusCounts } from "./types";
 
 function emptyStatusCounts(): StatusCounts {
   return Object.fromEntries(RESERVATION_STATUSES.map((s) => [s, 0])) as StatusCounts;
@@ -60,6 +60,22 @@ export async function getOccupancyNow(supabase: SupabaseClient) {
     tables: active,
     reservedNow,
   };
+}
+
+/** Each active table as free / busy / off (out of service), from the same
+ * getOccupancyNow result - out-of-service wins over a reservation, exactly
+ * as the occupied/outOfService counts above treat it. */
+export function liveTableStates(occupancy: Pick<Awaited<ReturnType<typeof getOccupancyNow>>, "tables" | "reservedNow">): LiveTableState[] {
+  return occupancy.tables.map((t) => ({
+    id: t.id,
+    hallId: t.hall_id,
+    state:
+      t.manual_status === "out_of_service"
+        ? "off"
+        : t.manual_status === "occupied" || occupancy.reservedNow.has(t.id)
+          ? "busy"
+          : "free",
+  }));
 }
 
 /** Per-hall occupancy, derived from getOccupancyNow's result so the "which

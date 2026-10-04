@@ -24,7 +24,11 @@ export type DashboardStats = {
     tables: string[];
   }[];
   halls: { hallId: number; name: string; totalTables: number; occupied: number; percent: number }[];
+  /** Every active table's state right now, for the dashboard mini plan. */
+  liveTables: LiveTableState[];
 };
+
+export type LiveTableState = { id: number; hallId: number; state: "free" | "busy" | "off" };
 
 /** Response of /api/dashboard/occupancy - the live floor figure the staff
  * sidebar shows on every page. Same shape as DashboardStats.occupancy. */

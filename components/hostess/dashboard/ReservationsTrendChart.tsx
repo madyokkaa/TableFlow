@@ -1,41 +1,38 @@
 "use client";
 
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatDateShort } from "@/lib/ru";
+import { restaurantTodayIso } from "@/lib/scheduling";
 import type { DashboardStats } from "@/lib/dashboard/types";
 
 // "completed" folds into "confirmed" here - both are the successful-visit
 // path, and keeping them as one series avoids a 5th, mostly-empty stack band.
+// Order is bottom-to-top of each stacked column.
 const SERIES = [
-  { key: "pending", label: "Ожидает", color: "var(--color-status-pending)" },
   { key: "confirmedTotal", label: "Подтверждено", color: "var(--color-status-confirmed)" },
+  { key: "pending", label: "Ожидает", color: "var(--color-status-pending)" },
   { key: "cancelled", label: "Отменено", color: "var(--color-status-cancelled)" },
-  { key: "no-show", label: "Не пришли", color: "var(--color-status-noshow)" },
+  { key: "no-show", label: "Не пришли", color: "#7d6a64" },
 ] as const;
 
 type ChartPoint = { date: string; confirmedTotal: number } & Record<string, number | string>;
 
 type TooltipPayloadEntry = { dataKey: string; value: number; color: string };
 
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: TooltipPayloadEntry[];
-  label?: string;
-}) {
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) {
   if (!active || !payload?.length || !label) return null;
+  const total = payload.reduce((sum, entry) => sum + (Number(entry.value) || 0), 0);
   return (
-    <div className="rounded-xl border border-line bg-surface px-3 py-2 text-xs shadow-[var(--shadow-floating)]">
-      <p className="mb-1.5 font-medium text-ink">{formatDateShort(label)}</p>
-      <div className="flex flex-col gap-1">
-        {payload.map((entry) => (
-          <div key={entry.dataKey} className="flex items-center gap-2 text-muted">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: entry.color }} />
+    <div className="rounded-[10px] bg-ink px-3 py-2 text-xs font-semibold text-surface shadow-[0_18px_40px_-18px_#000]">
+      <p className="mb-1">
+        {formatDateShort(label)} · {total}
+      </p>
+      <div className="flex flex-col gap-0.5 font-medium">
+        {[...payload].reverse().map((entry) => (
+          <div key={entry.dataKey} className="flex items-center gap-2">
+            <span className="h-2 w-2 shrink-0 rounded-[3px]" style={{ background: entry.color }} />
             <span>{SERIES.find((s) => s.key === entry.dataKey)?.label}</span>
-            <span className="ml-auto font-medium text-ink">{entry.value}</span>
+            <span className="ml-auto pl-3 font-bold">{entry.value}</span>
           </div>
         ))}
       </div>
@@ -43,57 +40,74 @@ function ChartTooltip({
   );
 }
 
+export function TrendLegend() {
+  return (
+    <div className="flex flex-wrap gap-4 text-xs text-muted">
+      {[SERIES[1], SERIES[0], SERIES[2], SERIES[3]].map((s) => (
+        <span key={s.key} className="inline-flex items-center gap-1.5">
+          <i className="block h-[9px] w-[9px] rounded-[3px]" style={{ background: s.color }} aria-hidden="true" />
+          {s.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function DayTick({ x, y, payload, today }: { x?: number; y?: number; payload?: { value: string }; today: string }) {
+  if (x === undefined || y === undefined || !payload) return null;
+  const [, month, day] = payload.value.split("-");
+  const isToday = payload.value === today;
+  return (
+    <text
+      x={x}
+      y={y + 12}
+      textAnchor="middle"
+      fontFamily="var(--font-mono)"
+      fontSize={10.5}
+      fill={isToday ? "var(--color-claret)" : "#8f7c75"}
+      fontWeight={isToday ? 700 : 400}
+    >
+      {isToday ? "сегодня" : `${day}.${month}`}
+    </text>
+  );
+}
+
+/** Stacked columns per day: confirmed at the bottom, then pending,
+ * cancelled and no-shows, with today's label picked out in claret. */
 export function ReservationsTrendChart({ data }: { data: DashboardStats["trend"] }) {
+  const today = restaurantTodayIso();
   const chartData: ChartPoint[] = data.map((point) => ({
     ...point,
     confirmedTotal: point.confirmed + point.completed,
   }));
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={chartData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }} barCategoryGap="22%">
+        <CartesianGrid vertical={false} stroke="#251c1a" />
+        <YAxis hide allowDecimals={false} />
+        <XAxis
+          dataKey="date"
+          tick={<DayTick today={today} />}
+          axisLine={{ stroke: "#2c2220" }}
+          tickLine={false}
+          interval={chartData.length <= 10 ? 0 : "preserveStartEnd"}
+        />
+        <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgb(236 143 163 / 0.06)" }} />
         {SERIES.map((s) => (
-          <span key={s.key} className="flex items-center gap-1.5 text-xs text-muted">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
-            {s.label}
-          </span>
-        ))}
-      </div>
-      <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
-          <defs>
-            {SERIES.map((s) => (
-              <linearGradient key={s.key} id={`dashboard-trend-fill-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={s.color} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={s.color} stopOpacity={0.02} />
-              </linearGradient>
-            ))}
-          </defs>
-          <XAxis
-            dataKey="date"
-            tickFormatter={(iso: string) => {
-              const [, month, day] = iso.split("-");
-              return `${day}.${month}`;
-            }}
-            tick={{ fill: "var(--color-muted)", fontSize: 11 }}
-            axisLine={{ stroke: "var(--color-line)" }}
-            tickLine={false}
-            interval="preserveStartEnd"
+          <Bar
+            key={s.key}
+            dataKey={s.key}
+            stackId="reservations"
+            fill={s.color}
+            stroke="var(--color-surface)"
+            strokeWidth={2}
+            radius={[5, 5, 5, 5]}
+            maxBarSize={46}
+            animationDuration={900}
           />
-          <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--color-line)", strokeWidth: 1 }} />
-          {SERIES.map((s) => (
-            <Area
-              key={s.key}
-              type="linear"
-              dataKey={s.key}
-              stackId="reservations"
-              stroke={s.color}
-              strokeWidth={2}
-              fill={`url(#dashboard-trend-fill-${s.key})`}
-            />
-          ))}
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
   );
 }

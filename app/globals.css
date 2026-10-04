@@ -1457,3 +1457,15 @@ body {
   color: #a8dcbc;
   background: #18241c;
 }
+
+/* ---- Staff dashboard ---- */
+@keyframes db-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes db-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}

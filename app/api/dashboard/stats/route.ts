@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
-import { getTodaySummary, getOccupancyNow, getHallOccupancy, getUpcoming } from "@/lib/dashboard/liveQueries";
+import { getTodaySummary, getOccupancyNow, getHallOccupancy, getUpcoming, liveTableStates } from "@/lib/dashboard/liveQueries";
 import { getWeeklyKpis, getPeriodStats } from "@/lib/dashboard/periodQueries";
 import type { DashboardStats } from "@/lib/dashboard/types";
 import { completeExpiredReservations } from "@/lib/reservationCleanup";
@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
       guestOrigin: periodStats.guestOrigin,
       upcoming,
       halls,
+      liveTables: liveTableStates(occupancy),
     };
     return NextResponse.json(body);
   } catch (error) {
