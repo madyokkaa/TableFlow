@@ -66,7 +66,7 @@ function InviteRow({ onInvited }: { onInvited: (email: string, promoted: boolean
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
       transition={{ duration: 0.35, ease: [0.2, 0.9, 0.3, 1.2] }}
-      className="overflow-hidden border-b border-[#2a201d] bg-surface-raised"
+      className="overflow-hidden rounded-t-[21px] border-b border-[#2a201d] bg-surface-raised"
       aria-label="Новый сотрудник"
     >
       <div className="grid items-start gap-3 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
@@ -270,7 +270,9 @@ function StaffPageContent() {
 
       <ChangePasswordCard onChanged={notify} />
 
-      <section aria-label="Список сотрудников" className="overflow-hidden rounded-[22px] border border-line bg-[#1a1412]">
+      {/* No overflow-hidden: the row tooltips must be able to rise above
+          the list. The rows round their own corners instead. */}
+      <section aria-label="Список сотрудников" className="rounded-[22px] border border-line bg-[#1a1412]">
         <AnimatePresence initial={false}>{inviteOpen && <InviteRow key="invite" onInvited={handleInvited} />}</AnimatePresence>
         {staff === null ? (
           <div className="flex flex-col gap-2 p-4">

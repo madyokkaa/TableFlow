@@ -136,7 +136,7 @@ export function StaffRow({
 
   return (
     <div
-      className="grid animate-[gp-up_.5s_both] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b border-[#2a201d] px-4 py-3.5 transition-colors duration-200 last:border-b-0 hover:bg-surface-raised sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:px-5"
+      className="relative grid animate-[gp-up_.5s_both] grid-cols-[auto_minmax(0,1fr)_auto] items-center first:rounded-t-[21px] last:rounded-b-[21px] focus-within:z-10 hover:z-10 gap-x-4 gap-y-2 border-b border-[#2a201d] px-4 py-3.5 transition-colors duration-200 last:border-b-0 hover:bg-surface-raised sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:px-5"
       style={{ animationDelay: `${index * 70}ms` }}
     >
       <span
