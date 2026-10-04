@@ -105,7 +105,9 @@ export function BookingDrawer({
   useEffect(() => {
     nameRef.current?.focus({ preventScroll: true });
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      // Escape closes a dialog opened over the drawer (e.g. the reject
+      // reason) first - not the drawer underneath it.
+      if (e.key === "Escape" && document.querySelectorAll('[aria-modal="true"]').length <= 1) onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

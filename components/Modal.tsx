@@ -28,7 +28,9 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      // Above the bookings side drawer (z-60/61) so a dialog opened from it
+      // isn't hidden underneath; below toasts (z-70).
+      className="fixed inset-0 z-[65] flex items-center justify-center bg-ink/40 p-4"
       style={{ animation: "modal-backdrop-in 150ms ease-out" }}
       onClick={onClose}
       role="presentation"
