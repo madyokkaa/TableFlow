@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { useReservationsRealtime } from "./useReservationsRealtime";
+import { useReservationsReload } from "./useReservationsRealtime";
 
 /** The fields of a /api/reservations row the staff shell's pending-booking
  * badge and bell dropdown actually read. */
@@ -38,7 +38,7 @@ export function usePendingReservations() {
     load();
   }, [load]);
 
-  useReservationsRealtime(() => load(), undefined, "hostess-reservations-badge");
+  useReservationsReload(load);
 
   const remove = useCallback((id: number) => {
     setItems((prev) => (prev ? prev.filter((r) => r.id !== id) : prev));

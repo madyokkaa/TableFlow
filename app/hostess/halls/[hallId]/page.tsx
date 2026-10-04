@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch, parseError } from "@/lib/api";
-import { useReservationsRealtime } from "@/hooks/useReservationsRealtime";
+import { useReservationsReload } from "@/hooks/useReservationsRealtime";
 import { restaurantTodayIso } from "@/lib/scheduling";
 import type { HallObject } from "@/lib/floorPlan";
 import { AdminShell } from "@/components/hostess/AdminShell";
@@ -81,11 +81,7 @@ function HallEditorContent({ hallId }: { hallId: number }) {
 
   // Today's bookings change from other tabs/devices - refresh just those,
   // never the plan itself (that would throw away in-progress edits).
-  useReservationsRealtime(
-    useCallback(() => {
-      refreshReservationsToday();
-    }, [refreshReservationsToday])
-  );
+  useReservationsReload(refreshReservationsToday);
 
   if (loadError) {
     return (

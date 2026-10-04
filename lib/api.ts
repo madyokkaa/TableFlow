@@ -1,4 +1,5 @@
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { invalidateFloorData } from "@/lib/floorData";
 
 /** fetch() wrapper that attaches the current Supabase session as a Bearer
  * token, for calling our own /api/* route handlers from client components. */
@@ -16,7 +17,12 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     headers.set("content-type", "application/json");
   }
 
-  return fetch(path, { ...init, headers });
+  const response = await fetch(path, { ...init, headers });
+  // Any write to halls/tables (editor, halls page) makes the shared
+  // floor-data cache stale - drop it so the next reader sees the change.
+  const method = (init.method ?? "GET").toUpperCase();
+  if (method !== "GET" && /^\/api\/(halls|tables)(\/|\?|$)/.test(path)) invalidateFloorData();
+  return response;
 }
 
 /** Extracts a display-ready message from one of our API's error responses -

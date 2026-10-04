@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { hallPlanSize } from "@/lib/floorPlan";
+import { getFloorData } from "@/lib/floorData";
 import { tableSize } from "@/lib/tableShapes";
 import { pluralize } from "@/lib/ru";
 import { planUnits } from "@/components/floor-plan/PlanShapes";
@@ -31,13 +32,11 @@ function PlanScanner({ open }: { open: boolean }) {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetch("/api/halls"), fetch("/api/tables")])
-      .then(async ([h, t]) => {
-        if (!h.ok || !t.ok) throw new Error("plan unavailable");
-        const [hallRows, tableRows] = (await Promise.all([h.json(), t.json()])) as [Hall[], DiningTable[]];
+    getFloorData()
+      .then((floor) => {
         if (!cancelled) {
-          setHalls(hallRows);
-          setTables(tableRows.filter((row) => row.is_active));
+          setHalls(floor.halls);
+          setTables(floor.tables.filter((row) => row.is_active));
         }
       })
       .catch(() => {

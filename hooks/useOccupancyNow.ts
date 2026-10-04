@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import type { OccupancyNow } from "@/lib/dashboard/types";
-import { useReservationsRealtime } from "./useReservationsRealtime";
+import { useReservationsReload } from "./useReservationsRealtime";
 
 // Occupancy also changes with the clock alone (a booking's start time
 // arriving, a walk-in override on a table), which no reservation event
-// announces - a once-a-minute refresh covers those.
+// announces - a once-a-minute refresh covers those. Only while the tab is
+// visible: a background tab catches up the moment it's shown again.
 const REFRESH_MS = 60_000;
 
 /** Live "how many tables are taken right now" figure for the staff
@@ -28,11 +29,20 @@ export function useOccupancyNow() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount, the canonical Effects use case
     load();
-    const timer = window.setInterval(load, REFRESH_MS);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, REFRESH_MS);
+    function onVisible() {
+      if (document.visibilityState === "visible") load();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
 
-  useReservationsRealtime(() => load(), undefined, "hostess-reservations-occupancy");
+  useReservationsReload(load);
 
   return occupancy;
 }

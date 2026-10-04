@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { CalendarRange, ChevronLeft, ChevronRight, List, Plus, Search } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
+import { getFloorData } from "@/lib/floorData";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useReservationsRealtime, type ReservationChangeEvent, type RealtimeStatus } from "@/hooks/useReservationsRealtime";
 import { playNotificationSound } from "@/lib/notificationSound";
@@ -96,18 +97,24 @@ function ReservationsPageContent() {
     try {
       // The whole day, every hall and status - the filters, counters and
       // search all work on this one list client-side.
-      const [hallsRes, tablesRes, reservationsRes] = await Promise.all([
-        fetch("/api/halls"),
-        fetch("/api/tables"),
+      // Halls/tables come from the shared floor-data cache, so paging
+      // through days only re-requests the reservations.
+      const [floor, reservationsRes] = await Promise.all([
+        getFloorData().catch((err: { response?: Response }) => err),
         apiFetch(`/api/reservations?${new URLSearchParams({ date }).toString()}`),
       ]);
-      if (!hallsRes.ok || !tablesRes.ok || !reservationsRes.ok) {
-        setLoadError(await parseError(!reservationsRes.ok ? reservationsRes : !hallsRes.ok ? hallsRes : tablesRes));
+      if (!reservationsRes.ok) {
+        setLoadError(await parseError(reservationsRes));
         setReservations([]);
         return;
       }
-      setHalls(await hallsRes.json());
-      setTables(await tablesRes.json());
+      if (!("halls" in floor)) {
+        setLoadError(floor.response ? await parseError(floor.response) : "Не удалось загрузить залы и столы.");
+        setReservations([]);
+        return;
+      }
+      setHalls(floor.halls);
+      setTables(floor.tables);
       setReservations(await reservationsRes.json());
     } catch {
       setLoadError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
@@ -556,6 +563,7 @@ function ReservationsPageContent() {
             target={editingReservation ? { kind: "edit", reservation: editingReservation } : drawer}
             halls={halls}
             tables={tables}
+            knownDay={reservations ? { date, reservations } : undefined}
             onClose={closeDrawer}
             onSaved={(message) => {
               setDrawer(null);

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, parseError } from "@/lib/api";
 import type { DashboardStats } from "@/lib/dashboard/types";
-import { useReservationsRealtime } from "./useReservationsRealtime";
+import { useReservationsReload } from "./useReservationsRealtime";
 
 /** Loads /api/dashboard/stats for the given period, and keeps it fresh:
  * refetches on period change and whenever any reservation changes
@@ -36,7 +36,7 @@ export function useDashboardStats(period: 7 | 30) {
     load();
   }, [load]);
 
-  useReservationsRealtime(() => load(), undefined, "hostess-reservations-dashboard");
+  useReservationsReload(load);
 
   return { stats, loading, error, reload: load };
 }

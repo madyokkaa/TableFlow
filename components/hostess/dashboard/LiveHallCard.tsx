@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { hallPlanSize } from "@/lib/floorPlan";
+import { getFloorData } from "@/lib/floorData";
 import { tableSize } from "@/lib/tableShapes";
 import { planUnits } from "@/components/floor-plan/PlanShapes";
 import type { Hall } from "@/components/hostess/HallForm";
@@ -19,19 +20,18 @@ const STATE_CLASSES: Record<LiveTableState["state"], string> = {
 const STATE_LABELS: Record<LiveTableState["state"], string> = { free: "свободен", busy: "занят", off: "не в строю" };
 
 /** Hall geometry for the mini plan - the same public endpoints the guest
- * page reads. Loaded once; statuses come live from the dashboard stats. */
+ * page reads, via the shared floor-data cache. Statuses come live from the
+ * dashboard stats. */
 function useHallGeometry() {
   const [halls, setHalls] = useState<Hall[]>([]);
   const [tables, setTables] = useState<DiningTable[]>([]);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetch("/api/halls"), fetch("/api/tables")])
-      .then(async ([h, t]) => {
-        if (!h.ok || !t.ok) return;
-        const [hallRows, tableRows] = (await Promise.all([h.json(), t.json()])) as [Hall[], DiningTable[]];
+    getFloorData()
+      .then((floor) => {
         if (!cancelled) {
-          setHalls(hallRows);
-          setTables(tableRows);
+          setHalls(floor.halls);
+          setTables(floor.tables);
         }
       })
       .catch(() => {

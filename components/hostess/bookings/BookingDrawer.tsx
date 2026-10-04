@@ -23,25 +23,31 @@ function durationLabel(minutes: number) {
   return m ? `${h} ч ${m} мин` : `${h} ч`;
 }
 
-/** Other bookings of the drawer's day, for crossing out taken slots. */
-function useDayBookings(date: string) {
-  const [bookings, setBookings] = useState<SlotBooking[]>([]);
+const toSlotBookings = (rows: Reservation[]): SlotBooking[] =>
+  rows.map((r) => ({
+    id: r.id,
+    start_time: r.start_time,
+    duration_minutes: r.duration_minutes,
+    status: r.status,
+    table_ids: r.reservation_tables.map((rt) => rt.table_id),
+  }));
+
+/** Other bookings of the drawer's day, for crossing out taken slots. The
+ * page's own list is reused when it's for the same day (and kept live by
+ * realtime); only another day is fetched. */
+function useDayBookings(date: string, knownDay?: { date: string; reservations: Reservation[] }) {
+  const [fetched, setFetched] = useState<{ date: string; bookings: SlotBooking[] } | null>(null);
+  const known = knownDay?.date === date ? knownDay.reservations : null;
+  const needFetch = !known;
   useEffect(() => {
+    if (!needFetch) return;
     let cancelled = false;
     apiFetch(`/api/reservations?date=${date}`)
       .then(async (res) => {
         if (!res.ok || cancelled) return;
         const rows = (await res.json()) as Reservation[];
         if (cancelled) return;
-        setBookings(
-          rows.map((r) => ({
-            id: r.id,
-            start_time: r.start_time,
-            duration_minutes: r.duration_minutes,
-            status: r.status,
-            table_ids: r.reservation_tables.map((rt) => rt.table_id),
-          }))
-        );
+        setFetched({ date, bookings: toSlotBookings(rows) });
       })
       .catch(() => {
         // Without the day's bookings nothing is crossed out; the server
@@ -50,8 +56,11 @@ function useDayBookings(date: string) {
     return () => {
       cancelled = true;
     };
-  }, [date]);
-  return bookings;
+  }, [date, needFetch]);
+  return useMemo(() => {
+    if (known) return toSlotBookings(known);
+    return fetched?.date === date ? fetched.bookings : [];
+  }, [known, fetched, date]);
 }
 
 /** Side drawer for editing or creating a booking: guest, party size, day,
@@ -67,10 +76,13 @@ export function BookingDrawer({
   onSaved,
   onAccept,
   onRequestReject,
+  knownDay,
 }: {
   target: DrawerTarget;
   halls: Hall[];
   tables: DiningTable[];
+  /** The page's own list for the day it shows - reused instead of fetched. */
+  knownDay?: { date: string; reservations: Reservation[] };
   onClose: () => void;
   onSaved: (message: string) => void;
   onAccept?: (reservation: Reservation) => void;
@@ -113,7 +125,7 @@ export function BookingDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const dayBookings = useDayBookings(date);
+  const dayBookings = useDayBookings(date, knownDay);
   const slots = useMemo(() => staffSlots(editing?.date === date ? editing.start_time : undefined), [editing, date]);
   const taken = useMemo(
     () => takenSlots(slots, dayBookings, tableIds, duration, editing?.id),
