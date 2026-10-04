@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { hallPlanSize } from "@/lib/floorPlan";
 import { tableSize } from "@/lib/tableShapes";
 import { GUEST_CANCELLATION_REASONS, OTHER_REASON } from "@/lib/reservations";
-import { RESTAURANT_UTC_OFFSET_MINUTES } from "@/lib/scheduling";
+import { timeZoneOffsetMinutes } from "@/lib/scheduling";
 import { formatTime, guestsLabel } from "@/lib/ru";
 import { planUnits } from "@/components/floor-plan/PlanShapes";
 import type { Hall } from "@/components/hostess/HallForm";
@@ -26,12 +26,12 @@ export type TicketReservation = {
 const GHOST =
   "inline-flex h-11 items-center gap-2 rounded-[13px] border border-line-strong bg-transparent px-4 text-[13px] font-semibold text-ink/90 transition-[border-color,background-color,color] duration-200 hover:border-[#8a6a62] hover:bg-surface-raised disabled:opacity-50";
 
-/** Milliseconds until a reservation starts, reading its date/time in the
- * restaurant's fixed UTC offset (see lib/scheduling). */
+/** Milliseconds until a reservation starts, reading its date/time as wall
+ * clock in this device's time zone (see lib/scheduling). */
 function msUntil(date: string, time: string, now: number): number {
   const [y, m, d] = date.split("-").map(Number);
   const [hh, mm] = time.split(":").map(Number);
-  const startUtc = Date.UTC(y, m - 1, d, hh, mm) - RESTAURANT_UTC_OFFSET_MINUTES * 60_000;
+  const startUtc = Date.UTC(y, m - 1, d, hh, mm) - timeZoneOffsetMinutes(undefined, now) * 60_000;
   return Math.max(0, startUtc - now);
 }
 

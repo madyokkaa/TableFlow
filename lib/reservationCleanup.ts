@@ -14,7 +14,7 @@ export const STALE_RESERVATION_RETENTION_DAYS = 90;
  * 20260911183730 migration's sync_reservation_tables trigger) - date and
  * start_time are stored and compared as literal UTC, not converted from
  * restaurant-local first. Matching that convention here (rather than
- * "correctly" applying RESTAURANT_UTC_OFFSET_MINUTES) keeps this in sync
+ * "correctly" applying the restaurant's time zone) keeps this in sync
  * with the EXCLUDE constraint's own notion of when a reservation ends. */
 function reservationEndMs(date: string, startTime: string, durationMinutes: number): number {
   return Date.parse(`${date}T${startTime}Z`) + durationMinutes * 60_000;

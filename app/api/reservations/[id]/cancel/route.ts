@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { ALLOWED_STATUS_TRANSITIONS, mapRpcError, type ReservationStatus } from "@/lib/reservations";
 import { restaurantTodayIso } from "@/lib/scheduling";
+import { requestTimeZone } from "@/lib/requestTimeZone";
 
 // Guest self-service: cancel one's own reservation. Deliberately a separate,
 // narrow endpoint from the staff PATCH route rather than reusing it with a
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   // - enforce that server-side too, not just as a UI affordance, so a
   // direct call can't cancel a reservation retroactively (which would
   // erase the hostess's ability to mark it no-show).
-  if (reservation.date < restaurantTodayIso()) {
+  if (reservation.date < restaurantTodayIso(requestTimeZone(request))) {
     return NextResponse.json({ error: "эту бронь уже нельзя отменить" }, { status: 409 });
   }
 

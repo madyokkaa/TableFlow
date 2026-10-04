@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requestTimeZone } from "@/lib/requestTimeZone";
 import { getAuthenticatedUser, requireStaff } from "@/lib/supabase/auth";
 import { RESERVATION_STATUSES, STATUS_LABELS_RU, mapRpcError } from "@/lib/reservations";
 import { DEFAULT_DURATION_MINUTES, maxAdvanceBookingDateIso, restaurantTodayIso } from "@/lib/scheduling";
@@ -93,11 +94,14 @@ export async function POST(request: NextRequest) {
     unknown
   >;
 
+  // "Today" for the past/too-far checks is the caller's day, in the zone
+  // their browser reported.
+  const timeZone = requestTimeZone(request);
   const errors: Record<string, string> = {};
   if (typeof table_id !== "number" || !Number.isInteger(table_id)) errors.table_id = "обязательное поле";
   if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     errors.date = "формат даты: ГГГГ-ММ-ДД";
-  } else if (date > maxAdvanceBookingDateIso()) {
+  } else if (date > maxAdvanceBookingDateIso(timeZone)) {
     // No app-level cap on how far out a booking could be dated would let an
     // anonymous caller (this endpoint needs no session - see below) park a
     // table decades in the future and hold it forever, since a
@@ -129,7 +133,7 @@ export async function POST(request: NextRequest) {
   if (typeof party_size !== "number" || !Number.isInteger(party_size) || party_size < 1 || party_size > 100) {
     errors.party_size = "должно быть положительным целым числом (не более 100)";
   }
-  if (typeof date === "string" && date < restaurantTodayIso()) {
+  if (typeof date === "string" && date < restaurantTodayIso(timeZone)) {
     errors.date = "нельзя забронировать в прошлом";
   }
 

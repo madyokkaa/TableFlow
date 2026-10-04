@@ -5,6 +5,7 @@ import { getTodaySummary, getOccupancyNow, getHallOccupancy, getUpcoming, liveTa
 import { getWeeklyKpis, getPeriodStats } from "@/lib/dashboard/periodQueries";
 import type { DashboardStats } from "@/lib/dashboard/types";
 import { completeExpiredReservations } from "@/lib/reservationCleanup";
+import { requestTimeZone } from "@/lib/requestTimeZone";
 
 const VALID_PERIODS = [7, 30] as const;
 
@@ -24,6 +25,8 @@ export async function GET(request: NextRequest) {
     : 7;
 
   const supabase = createAdminClient();
+  // "Today" is the caller's day, in the zone their browser reported.
+  const timeZone = requestTimeZone(request);
   try {
     // Two independent chains in parallel. Past-due pending/confirmed
     // reservations shouldn't read as still active in "Брони сегодня" or the
@@ -32,7 +35,12 @@ export async function GET(request: NextRequest) {
     // no "now" anyway.
     const [[today, weekly, periodStats, upcoming], [occupancy, halls]] = await Promise.all([
       completeExpiredReservations(supabase).then(() =>
-        Promise.all([getTodaySummary(supabase), getWeeklyKpis(supabase), getPeriodStats(supabase, period), getUpcoming(supabase)])
+        Promise.all([
+          getTodaySummary(supabase, timeZone),
+          getWeeklyKpis(supabase, timeZone),
+          getPeriodStats(supabase, period, timeZone),
+          getUpcoming(supabase, undefined, timeZone),
+        ])
       ),
       getOccupancyNow(supabase).then(async (occ) => [occ, await getHallOccupancy(supabase, occ)] as const),
     ]);

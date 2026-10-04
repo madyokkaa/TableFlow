@@ -6,8 +6,8 @@ const RESOLVED_STATUSES = ["confirmed", "no-show", "completed"];
 
 /** No-show rate and average party size for the trailing 7 days, each paired
  * with the 7 days before that so the dashboard can show a trend arrow. */
-export async function getWeeklyKpis(supabase: SupabaseClient) {
-  const today = restaurantTodayIso();
+export async function getWeeklyKpis(supabase: SupabaseClient, timeZone?: string) {
+  const today = restaurantTodayIso(timeZone);
   const currentStart = addDaysIso(today, -6);
   const prevStart = addDaysIso(today, -13);
   const prevEnd = addDaysIso(today, -7);
@@ -45,8 +45,8 @@ export async function getWeeklyKpis(supabase: SupabaseClient) {
 /** Daily status-stacked booking trend, hour-of-day distribution, and the
  * registered-vs-anonymous guest split, all over the same `days`-long window
  * (a single reservations scan feeds all three, since they share the range). */
-export async function getPeriodStats(supabase: SupabaseClient, days: number) {
-  const today = restaurantTodayIso();
+export async function getPeriodStats(supabase: SupabaseClient, days: number, timeZone?: string) {
+  const today = restaurantTodayIso(timeZone);
   const startIso = addDaysIso(today, -(days - 1));
 
   const { data, error } = await supabase

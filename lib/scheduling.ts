@@ -30,31 +30,75 @@ export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd
   return aStart < bEnd && bStart < aEnd;
 }
 
-// The restaurant's fixed local offset (Europe/Moscow, UTC+3 - Russia hasn't
-// observed DST since 2014, so a plain fixed offset is safe here). Both the
-// guest client (picking "today") and the server (filtering elapsed slots)
-// need to agree on what "today"/"now" means in the restaurant's clock, not
-// the browser's or the server's own timezone - comparing a restaurant
-// wall-clock time against server UTC-of-day (as the code briefly did) is
-// off by this many hours for anyone not in UTC+0.
-export const RESTAURANT_UTC_OFFSET_MINUTES = 180;
+// The restaurant's local time is the time zone of the device in use - the
+// hostess's tablet, the guest's phone - picked up automatically from the
+// browser (IANA name, so daylight-saving rules come for free). The browser
+// shares it with the server (the `x-timezone` header on apiFetch, the `tz`
+// cookie on plain fetches) so both agree on "today"/"now"; see
+// lib/requestTimeZone.ts. The fallback, used only when no zone is known
+// (e.g. a server call with neither), is the zone the app used before.
+export const FALLBACK_TIME_ZONE = "Europe/Moscow";
+export const TIME_ZONE_COOKIE = "tz";
+export const TIME_ZONE_HEADER = "x-timezone";
 
-function restaurantLocalNow(): Date {
-  return new Date(Date.now() + RESTAURANT_UTC_OFFSET_MINUTES * 60_000);
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-/** Today's date in the restaurant's local timezone, as YYYY-MM-DD - safe to
- * call from either the browser or the server, since it never touches the
- * caller's own timezone. */
-export function restaurantTodayIso(): string {
-  const d = restaurantLocalNow();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+/** The browser's own IANA time zone; undefined on the server. */
+export function deviceTimeZone(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return zone && isValidTimeZone(zone) ? zone : undefined;
+}
+
+// Remember the device's zone in a cookie as soon as this module loads in the
+// browser - before any component fetches - so even plain (cookie-carrying)
+// requests tell the server which zone "today" is in.
+if (typeof document !== "undefined") {
+  const zone = deviceTimeZone();
+  if (zone) document.cookie = `${TIME_ZONE_COOKIE}=${encodeURIComponent(zone)}; path=/; max-age=31536000; samesite=lax`;
+}
+
+function wallClock(timeZone?: string, at = Date.now()) {
+  const zone = timeZone ?? deviceTimeZone() ?? FALLBACK_TIME_ZONE;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: zone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(at);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute") };
+}
+
+/** Today's date in the restaurant's time zone (the device's, or `timeZone`
+ * when given - the server passes the one the request reported), as
+ * YYYY-MM-DD. */
+export function restaurantTodayIso(timeZone?: string): string {
+  const c = wallClock(timeZone);
+  return `${c.year}-${String(c.month).padStart(2, "0")}-${String(c.day).padStart(2, "0")}`;
 }
 
 /** Minutes since midnight, restaurant local time. */
-export function restaurantNowMinutes(): number {
-  const d = restaurantLocalNow();
-  return d.getUTCHours() * 60 + d.getUTCMinutes();
+export function restaurantNowMinutes(timeZone?: string): number {
+  const c = wallClock(timeZone);
+  return c.hour * 60 + c.minute;
+}
+
+/** The zone's offset from UTC in minutes at `at` (e.g. 300 for UTC+5). */
+export function timeZoneOffsetMinutes(timeZone?: string, at = Date.now()): number {
+  const c = wallClock(timeZone, at);
+  const asUtc = Date.UTC(c.year, c.month - 1, c.day, c.hour, c.minute);
+  return Math.round((asUtc - (at - (at % 60_000))) / 60_000);
 }
 
 // How far out a reservation may be dated. Without this, an anonymous guest
@@ -67,8 +111,8 @@ export const MAX_ADVANCE_BOOKING_DAYS = 90;
 
 /** The latest date a reservation may be made for, in the restaurant's local
  * timezone, as YYYY-MM-DD. */
-export function maxAdvanceBookingDateIso(): string {
-  return addDaysIso(restaurantTodayIso(), MAX_ADVANCE_BOOKING_DAYS);
+export function maxAdvanceBookingDateIso(timeZone?: string): string {
+  return addDaysIso(restaurantTodayIso(timeZone), MAX_ADVANCE_BOOKING_DAYS);
 }
 
 /** Adds (or subtracts, for negative `days`) whole days to a YYYY-MM-DD date,

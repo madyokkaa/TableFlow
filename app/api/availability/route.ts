@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requestTimeZone } from "@/lib/requestTimeZone";
 import {
   DEFAULT_DURATION_MINUTES,
   candidateStartTimes,
@@ -96,8 +97,9 @@ export async function GET(request: NextRequest) {
   // time, not the server's UTC. Comparing a restaurant wall-clock slot
   // against UTC-of-day silently offered (and let the DB accept) slots that
   // had already passed for any restaurant not in UTC+0.
-  const isToday = dateStr === restaurantTodayIso();
-  const nowMinutesLocal = restaurantNowMinutes();
+  const timeZone = requestTimeZone(request);
+  const isToday = dateStr === restaurantTodayIso(timeZone);
+  const nowMinutesLocal = restaurantNowMinutes(timeZone);
 
   const candidates = candidateStartTimes().filter((start) => !isToday || timeToMinutes(start) > nowMinutesLocal);
   const available: {

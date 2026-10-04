@@ -73,7 +73,7 @@ function formatClock(minutes: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/** Restaurant-local time (fixed UTC offset, see lib/scheduling) for the
+/** Local time in this device's time zone (see lib/scheduling) for the
  * header's "Смена" chip, re-read often enough to never lag a minute. */
 function useRestaurantClock() {
   const [now, setNow] = useState(() => ({ minutes: restaurantNowMinutes(), today: restaurantTodayIso() }));

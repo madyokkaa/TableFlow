@@ -1,5 +1,6 @@
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { invalidateFloorData } from "@/lib/floorData";
+import { TIME_ZONE_HEADER, deviceTimeZone } from "@/lib/scheduling";
 
 /** fetch() wrapper that attaches the current Supabase session as a Bearer
  * token, for calling our own /api/* route handlers from client components. */
@@ -13,6 +14,9 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (session?.access_token) {
     headers.set("authorization", `Bearer ${session.access_token}`);
   }
+  // Lets the server work out "today"/"now" in this device's time zone.
+  const zone = deviceTimeZone();
+  if (zone && !headers.has(TIME_ZONE_HEADER)) headers.set(TIME_ZONE_HEADER, zone);
   if (init.body && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }

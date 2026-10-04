@@ -10,8 +10,8 @@ function emptyStatusCounts(): StatusCounts {
 }
 
 /** Today's reservations, broken down by status. */
-export async function getTodaySummary(supabase: SupabaseClient) {
-  const today = restaurantTodayIso();
+export async function getTodaySummary(supabase: SupabaseClient, timeZone?: string) {
+  const today = restaurantTodayIso(timeZone);
   const { data, error } = await supabase.from("reservations").select("status").eq("date", today);
   if (error) throw error;
 
@@ -124,8 +124,8 @@ type ReservationTableRow = { dining_tables: { label: string }[] | null };
 /** The next handful of today's still-upcoming pending/confirmed reservations,
  * ordered by start time. A small grace window keeps a reservation that just
  * started from disappearing off the list mid-seating. */
-export async function getUpcoming(supabase: SupabaseClient, limit = 6) {
-  const today = restaurantTodayIso();
+export async function getUpcoming(supabase: SupabaseClient, limit = 6, timeZone?: string) {
+  const today = restaurantTodayIso(timeZone);
   const { data, error } = await supabase
     .from("reservations")
     .select("id, start_time, guest_name, party_size, status, reservation_tables(dining_tables(label))")
@@ -134,7 +134,7 @@ export async function getUpcoming(supabase: SupabaseClient, limit = 6) {
     .order("start_time");
   if (error) throw error;
 
-  const nowMinutes = restaurantNowMinutes();
+  const nowMinutes = restaurantNowMinutes(timeZone);
   return (data ?? [])
     .filter((r) => timeToMinutes(String(r.start_time)) >= nowMinutes - 15)
     .slice(0, limit)
