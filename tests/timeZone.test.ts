@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isValidTimeZone, restaurantNowMinutes, restaurantTodayIso, timeZoneOffsetMinutes } from "../lib/scheduling";
-import { requestTimeZone } from "../lib/requestTimeZone";
+import { enforcedDates, requestTimeZone } from "../lib/requestTimeZone";
 
 describe("time zone helpers", () => {
   // 2026-01-15 21:30 UTC.
@@ -43,6 +43,22 @@ describe("requestTimeZone", () => {
   it("prefers the header, then the cookie", () => {
     expect(requestTimeZone(req({ "x-timezone": "Asia/Almaty", cookie: "tz=Europe%2FMoscow" }))).toBe("Asia/Almaty");
     expect(requestTimeZone(req({ cookie: "a=1; tz=Europe%2FMoscow; b=2" }))).toBe("Europe/Moscow");
+  });
+
+  it("never lets a spoofed zone move rule checks into the past", () => {
+    const realNow = Date.now;
+    // 2026-01-15 22:30 UTC: already Jan 16 in Moscow (UTC+3), still Jan 15
+    // in a client claiming UTC-12.
+    Date.now = () => Date.UTC(2026, 0, 15, 22, 30);
+    try {
+      expect(enforcedDates(req({ "x-timezone": "Etc/GMT+12" })).today).toBe("2026-01-16");
+      // A client ahead of the fallback zone gets its own (later) today.
+      expect(enforcedDates(req({ "x-timezone": "Pacific/Kiritimati" })).today).toBe("2026-01-16");
+      // The advance window is cut at the earlier of the two last dates.
+      expect(enforcedDates(req({ "x-timezone": "Pacific/Kiritimati" })).maxDate).toBe("2026-04-16");
+    } finally {
+      Date.now = realNow;
+    }
   });
 
   it("ignores anything that isn't a real zone", () => {
