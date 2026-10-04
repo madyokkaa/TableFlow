@@ -111,6 +111,17 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (error.code === "23503") {
       return NextResponse.json({ error: "validation_failed", details: { hall_id: "зал не найден" } }, { status: 400 });
     }
+    // The DB refuses to shrink a table below a party already booked on it
+    // (the capacity trigger) - an expected refusal, not a server fault.
+    const capacityMatch = error.code === "P0001" ? error.message.match(/party_size (\d+) exceeds combined table capacity/) : null;
+    if (capacityMatch) {
+      return NextResponse.json(
+        {
+          error: `на этот стол есть бронь на ${capacityMatch[1]} гостей - вместимость нельзя сделать меньше, пока бронь не перенесена`,
+        },
+        { status: 409 }
+      );
+    }
     console.error("[tables.update] update failed", error);
     return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
