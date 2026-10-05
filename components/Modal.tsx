@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "motion/react";
 import { X } from "lucide-react";
 
@@ -24,13 +25,16 @@ export function Modal({
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Portalled to <body>: a modal opened from inside an animated/transformed
+  // element (e.g. a staff row) would otherwise be positioned and clipped
+  // relative to that element instead of the viewport.
+  return createPortal(
     <div
       // Above the bookings side drawer (z-60/61) so a dialog opened from it
       // isn't hidden underneath; below toasts (z-70).
-      className="fixed inset-0 z-[65] flex items-center justify-center bg-ink/40 p-4"
+      className="fixed inset-0 z-[65] flex items-center justify-center bg-[rgb(10_7_6/0.55)] p-4 backdrop-blur-[3px]"
       style={{ animation: "modal-backdrop-in 150ms ease-out" }}
       onClick={onClose}
       role="presentation"
@@ -59,6 +63,7 @@ export function Modal({
         </div>
         <div className="overflow-y-auto px-6 pb-6">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
