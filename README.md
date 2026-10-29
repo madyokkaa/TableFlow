@@ -100,10 +100,83 @@ npx tsx scripts/seed.ts
 ```bash
 npm run dev       # http://localhost:3000
 npm run build     # production-сборка
-npm run test       # интеграционные тесты на реальном проекте Supabase
+npm run test       # все тесты (часть - на тестовом проекте Supabase, см. «Тесты и CI»)
 npm run test:e2e   # e2e-тесты Playwright
 npm run lint
 ```
+
+## Тесты и CI
+
+### Какие тесты что проверяют
+
+| Файл | Нужен Supabase | Что проверяет |
+| --- | --- | --- |
+| `tests/bookingSlots.test.ts` | нет | сетка слотов персонала, занятые слоты |
+| `tests/dashboardLive.test.ts` | нет | состояние столов на дашборде «сейчас» |
+| `tests/floorPlan.test.ts` | нет | геометрия схемы зала, валидация полей зала/объектов |
+| `tests/passwordStrength.test.ts` | нет | оценка надёжности пароля |
+| `tests/timeZone.test.ts` | нет | часовые пояса, «сегодня» для правил брони |
+| `tests/reservations.test.ts` | да | API залов/столов/броней: создание, подтверждение, отмена, двойная бронь |
+| `tests/hallObjects.test.ts` | да | API схемы зала в реальном масштабе |
+
+Тесты, которым нужен Supabase, запускаются **только против отдельного
+тестового проекта**, никогда против рабочей базы ресторана: они создают и
+удаляют залы, столы, брони и пользователей.
+
+### Локальный запуск
+
+```bash
+npm run test:unit    # только тесты без базы
+npm test             # все тесты; нужен .env.local тестового проекта
+npm run lint
+npm run typecheck    # next typegen + tsc --noEmit
+```
+
+Для `npm test` в `.env.local` должны быть ключи **тестового** проекта и
+учётная запись сотрудника в нём (`TEST_HOSTESS_EMAIL`,
+`TEST_HOSTESS_PASSWORD`), а миграции применены к нему:
+
+```bash
+npx supabase db push --db-url "$TEST_SUPABASE_DB_URL"
+```
+
+### GitHub Actions
+
+`.github/workflows/ci.yml` запускается на каждый pull request и push в
+`main`:
+
+- `lint` — ESLint и проверка типов (`npm run typecheck`);
+- `unit` — тесты без базы (`npm run test:unit`);
+- `build` — `npm run build`;
+- `security` — `npm audit --omit=dev --audit-level=high` и поиск секретов
+  в истории (gitleaks);
+- `integration` — применяет миграции к тестовому проекту и запускает все
+  тесты. Не блокирует слияние, не запускается для PR из форков и
+  пропускается, если секреты тестового проекта не заданы.
+
+### Секреты
+
+Settings → Secrets and variables → Actions → **Secrets**:
+
+| Секрет | Откуда |
+| --- | --- |
+| `TEST_SUPABASE_URL` | тестовый проект: Project Settings → API |
+| `TEST_SUPABASE_ANON_KEY` | тестовый проект: Project Settings → API |
+| `TEST_SUPABASE_SERVICE_ROLE_KEY` | тестовый проект: Project Settings → API |
+| `TEST_SUPABASE_DB_URL` | тестовый проект: Database → Connection string → Session pooler (5432) |
+| `TEST_HOSTESS_EMAIL`, `TEST_HOSTESS_PASSWORD` | сотрудник, заведённый в тестовом проекте (см. «Учётная запись сотрудника») |
+| `GITLEAKS_LICENSE` | только если репозиторий принадлежит организации (бесплатно на gitleaks.io) |
+
+Во вкладке **Variables** можно задать `PRODUCTION_SUPABASE_URL` — адрес
+рабочего проекта. Если тестовые секреты по ошибке указывают на него,
+интеграционные тесты откажутся запускаться.
+
+### Обязательные проверки для `main`
+
+Settings → Branches → Add branch protection rule → Branch name pattern
+`main` → **Require status checks to pass before merging** → отметьте
+`lint`, `unit`, `build`, `security` (они появятся в списке после первого
+прогона CI). `integration` не добавляйте: он информационный.
 
 ## Структура проекта
 
