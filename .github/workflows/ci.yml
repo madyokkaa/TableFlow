@@ -128,7 +128,7 @@ jobs:
         run: npm ci
       - name: Apply migrations to the test project
         if: steps.guard.outputs.skip != 'true'
-        run: npx --yes supabase@2.122.0 db push --db-url "$SUPABASE_DB_URL"
+        run: npx --yes supabase@2.122.0 db push --yes --db-url "$SUPABASE_DB_URL"
       - name: Integration tests
         if: steps.guard.outputs.skip != 'true'
         run: npm test
