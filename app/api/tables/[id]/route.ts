@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { logAudit } from "@/lib/audit";
 import { completeExpiredReservations, deleteStaleReservations } from "@/lib/reservationCleanup";
 import { isRotation } from "@/lib/floorPlan";
 import { MIGRATION_PENDING_MESSAGE, isMissingSchemaError } from "@/lib/schemaErrors";
@@ -129,6 +130,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: `стол ${tableId} не найден` }, { status: 404 });
   }
 
+  await logAudit(supabase, {
+    actor: staff.id,
+    role: "staff",
+    action: "table.updated",
+    entity: "table",
+    entityId: tableId,
+    details: { fields: Object.keys(update) },
+  });
+
   return NextResponse.json(data);
 }
 
@@ -196,6 +206,8 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   if (!deletedCount) {
     return NextResponse.json({ error: `стол ${tableId} не найден` }, { status: 404 });
   }
+
+  await logAudit(supabase, { actor: staff.id, role: "staff", action: "table.deleted", entity: "table", entityId: tableId });
 
   return new NextResponse(null, { status: 204 });
 }

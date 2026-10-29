@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
 import { isMissingSchemaError } from "@/lib/schemaErrors";
+import { logAuditCritical } from "@/lib/audit";
 
 // Staff-only: list every staff account (email + active flag) so the
 // hostess panel can show who already has access before adding someone new.
@@ -127,6 +128,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
     }
     console.info("[staff.create] granted (existing account)", { actor: staff.id, target: existingUserId });
+    await logAuditCritical(admin, {
+      actor: staff.id,
+      role: "staff",
+      action: "staff.added",
+      entity: "staff",
+      entityId: existingUserId,
+      details: { existing_account: true },
+    });
 
     // Best-effort - the account already has staff access either way, and
     // they can always use "Забыли пароль?" themselves if this email fails.
@@ -168,6 +177,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
   console.info("[staff.create] granted (new account)", { actor: staff.id, target: created.user.id });
+  await logAuditCritical(admin, {
+    actor: staff.id,
+    role: "staff",
+    action: "staff.added",
+    entity: "staff",
+    entityId: created.user.id,
+    details: { existing_account: false },
+  });
 
   return NextResponse.json(
     { user_id: created.user.id, email: normalizedEmail, active: true, promoted: false },

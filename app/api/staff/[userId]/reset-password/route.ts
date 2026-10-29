@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { logAuditCritical } from "@/lib/audit";
 
 // Staff-only: send another staff member a password-reset link. Deliberately
 // never sets a password directly - the same reasoning as staff/route.ts's
@@ -36,5 +37,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ us
   }
 
   console.info("[staff.reset-password] link sent", { actor: staff.id, target: userId });
+  await logAuditCritical(admin, {
+    actor: staff.id,
+    role: "staff",
+    action: "staff.password_reset",
+    entity: "staff",
+    entityId: userId,
+  });
   return NextResponse.json({ email: data.user.email });
 }

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { ALLOWED_STATUS_TRANSITIONS, mapRpcError, type ReservationStatus } from "@/lib/reservations";
 import { enforcedDates } from "@/lib/requestTimeZone";
+import { logAudit } from "@/lib/audit";
 
 // Guest self-service: cancel one's own reservation. Deliberately a separate,
 // narrow endpoint from the staff PATCH route rather than reusing it with a
@@ -80,6 +81,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if (reasonError) {
     console.error("[reservations.cancel] saving cancellation reason failed", reasonError);
   }
+
+  await logAudit(admin, {
+    actor: user.id,
+    role: "guest",
+    action: "reservation.cancelled",
+    entity: "reservation",
+    entityId: reservationId,
+    details: { from: reservation.status, to: "cancelled", by: "guest" },
+  });
 
   return NextResponse.json({ id: reservationId, status: "cancelled" });
 }

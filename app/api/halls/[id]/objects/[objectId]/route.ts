@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { logAudit } from "@/lib/audit";
 import { parseHallObjectFields } from "@/lib/floorPlan";
 import { MIGRATION_PENDING_MESSAGE, isMissingSchemaError } from "@/lib/schemaErrors";
 
@@ -56,6 +57,15 @@ export async function PATCH(request: NextRequest, context: Params) {
     return NextResponse.json({ error: `объект ${ids.objectId} не найден` }, { status: 404 });
   }
 
+  await logAudit(supabase, {
+    actor: staff.id,
+    role: "staff",
+    action: "hall_object.updated",
+    entity: "hall_object",
+    entityId: ids.objectId,
+    details: { hall_id: ids.hallId, fields: Object.keys(values) },
+  });
+
   return NextResponse.json(data);
 }
 
@@ -87,6 +97,15 @@ export async function DELETE(request: NextRequest, context: Params) {
   if (!count) {
     return NextResponse.json({ error: `объект ${ids.objectId} не найден` }, { status: 404 });
   }
+
+  await logAudit(supabase, {
+    actor: staff.id,
+    role: "staff",
+    action: "hall_object.deleted",
+    entity: "hall_object",
+    entityId: ids.objectId,
+    details: { hall_id: ids.hallId },
+  });
 
   return new NextResponse(null, { status: 204 });
 }
