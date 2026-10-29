@@ -128,6 +128,7 @@ npm run lint
 | `tests/hallObjects.test.ts` | да | API схемы зала в реальном масштабе |
 | `tests/audit.test.ts` | да | журнал действий: запись при смене статуса, неизменяемость, `GET /api/audit` без токена — 401 |
 | `tests/privacyErase.test.ts` | да | удаление данных гостя: закрытая бронь обезличивается, активная будущая — нет, повтор безопасен, ответ одинаков, 429 |
+| `tests/concurrentBooking.test.ts` | да | `CONCURRENCY` (по умолчанию 1000) одновременных броней одного стола на одно время: ровно один `201`, остальные `409`, в базе одна активная бронь. Запускается только через `npm run test:concurrency` (или `RUN_CONCURRENCY=1`) |
 | `tests/rateLimit.test.ts` | да | счётчик `rate_limit_hit`: лимит → 429, недоступен для anon-ключа |
 
 Тесты, которым нужен Supabase, запускаются **только против отдельного
@@ -144,7 +145,12 @@ npm run test:unit    # только тесты без базы
 npm test             # все тесты; нужен .env.local тестового проекта
 npm run lint
 npm run typecheck    # next typegen + tsc --noEmit
+npm run test:concurrency   # нагрузочный тест, только на тестовом проекте
 ```
+
+Нагрузочный тест откажется запускаться, если `NEXT_PUBLIC_SUPABASE_URL`
+совпадает с `PRODUCTION_SUPABASE_URL` (задайте её в `.env.local`, чтобы
+защита работала). Число запросов — переменная `CONCURRENCY`.
 
 Для `npm test` в `.env.local` должны быть ключи **тестового** проекта и
 учётная запись сотрудника в нём (`TEST_HOSTESS_EMAIL`,
@@ -167,6 +173,10 @@ npx supabase db push --db-url "$TEST_SUPABASE_DB_URL"
 - `integration` — применяет миграции к тестовому проекту и запускает все
   тесты. Не блокирует слияние, не запускается для PR из форков и
   пропускается, если секреты тестового проекта не заданы.
+
+`.github/workflows/concurrency.yml` — нагрузочный тест, только вручную:
+Actions → Concurrency test → Run workflow, поле `concurrency` (по
+умолчанию 1000). Использует те же секреты тестового проекта.
 
 ### Секреты
 
