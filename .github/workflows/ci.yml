@@ -9,10 +9,12 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same branch/PR makes the older run pointless.
+# A newer push to a PR makes its older run pointless; runs on main are
+# never cancelled, so every merge gets a result (and the README badge stays
+# meaningful).
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NODE_VERSION: "22"
