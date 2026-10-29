@@ -113,6 +113,7 @@ describe("halls/tables/reservations API", () => {
         guest_name: "Alice",
         guest_phone: "+10000000001",
         party_size: 2,
+        consent_pd: true,
       })
     );
     expect(createRes.status).toBe(201);
@@ -137,6 +138,7 @@ describe("halls/tables/reservations API", () => {
         guest_name: "Solo Booker",
         guest_phone: "+10000000002",
         party_size: 2,
+        consent_pd: true,
       })
     );
     expect(createRes.status).toBe(201);
@@ -181,6 +183,7 @@ describe("halls/tables/reservations API", () => {
       guest_name: "Racer",
       guest_phone: "+10000000003",
       party_size: 2,
+      consent_pd: true,
     };
     const [resA, resB] = await Promise.all([
       createReservation(jsonRequest("/api/reservations", "POST", tokenA, body)),
@@ -206,6 +209,7 @@ describe("halls/tables/reservations API", () => {
         guest_name: "Self Confirm Attempt",
         guest_phone: "+10000000004",
         party_size: 2,
+        consent_pd: true,
       })
     );
     expect(createRes.status).toBe(201);
@@ -234,6 +238,7 @@ describe("halls/tables/reservations API", () => {
         guest_name: "Anonymous Guest",
         guest_phone: "+10000000005",
         party_size: 2,
+        consent_pd: true,
       })
     );
     expect(createRes.status).toBe(201);
@@ -260,6 +265,7 @@ describe("halls/tables/reservations API", () => {
         guest_name: "Cancel Owner",
         guest_phone: "+10000000006",
         party_size: 2,
+        consent_pd: true,
       })
     );
     expect(createRes.status).toBe(201);
@@ -289,6 +295,7 @@ describe("halls/tables/reservations API", () => {
         guest_name: "Anonymous Owner",
         guest_phone: "+10000000007",
         party_size: 2,
+        consent_pd: true,
       })
     );
     expect(anonCreateRes.status).toBe(201);
@@ -321,6 +328,7 @@ describe("halls/tables/reservations API", () => {
         guest_name: "Double Cancel",
         guest_phone: "+10000000008",
         party_size: 2,
+        consent_pd: true,
       })
     );
     expect(createRes.status).toBe(201);
@@ -345,6 +353,52 @@ describe("halls/tables/reservations API", () => {
     expect(res.status).toBe(401);
   });
 
+  it("rejects a booking without consent to personal data processing (400)", async () => {
+    for (const consent of [undefined, false, "true"]) {
+      const res = await createReservation(
+        jsonRequest("/api/reservations", "POST", null, {
+          table_id: tableAId,
+          date: dateStr,
+          start_time: "21:30",
+          guest_name: "No Consent",
+          guest_phone: "+10000000010",
+          party_size: 2,
+          consent_pd: consent,
+        })
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("validation_failed");
+      expect(body.details.consent_pd).toBe("необходимо согласие на обработку персональных данных");
+    }
+    const { count } = await admin
+      .from("reservations")
+      .select("id", { count: "exact", head: true })
+      .eq("guest_name", "No Consent")
+      .eq("date", dateStr);
+    expect(count).toBe(0);
+  });
+
+  it("records when the guest consented", async () => {
+    const before = Date.now();
+    const res = await createReservation(
+      jsonRequest("/api/reservations", "POST", null, {
+        table_id: tableBId,
+        date: dateStr,
+        start_time: "21:30",
+        guest_name: "Consenting Guest",
+        guest_phone: "+10000000011",
+        party_size: 2,
+        consent_pd: true,
+      })
+    );
+    expect(res.status).toBe(201);
+    const reservation = await res.json();
+    reservationIds.push(reservation.id);
+    expect(reservation.consent_at).not.toBeNull();
+    expect(Date.parse(reservation.consent_at)).toBeGreaterThanOrEqual(before - 5_000);
+  });
+
   it("rejects a booking date beyond the advance-booking window", async () => {
     const res = await createReservation(
       jsonRequest("/api/reservations", "POST", null, {
@@ -354,6 +408,7 @@ describe("halls/tables/reservations API", () => {
         guest_name: "Too Far Ahead",
         guest_phone: "+10000000009",
         party_size: 2,
+        consent_pd: true,
       })
     );
     expect(res.status).toBe(400);

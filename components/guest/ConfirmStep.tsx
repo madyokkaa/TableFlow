@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { motion } from "motion/react";
 import { formatDateTime, guestsLabel } from "@/lib/ru";
 import { formatPhoneInput } from "@/lib/phone";
@@ -26,7 +27,7 @@ export function ConfirmStep({
   partySize: number;
   submitting: boolean;
   error: string | null;
-  onSubmit: (fields: { name: string; phone: string; email: string }) => void;
+  onSubmit: (fields: { name: string; phone: string; email: string; consentPd: true }) => void;
   defaultName?: string;
   defaultPhone?: string;
   defaultEmail?: string;
@@ -35,17 +36,18 @@ export function ConfirmStep({
   const [phone, setPhone] = useState(() => formatPhoneInput(defaultPhone));
   const [email, setEmail] = useState(defaultEmail);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const hasContact = phone.trim().length > 0 || email.trim().length > 0;
   const emailValid = email.trim().length === 0 || isValidEmail(email);
-  const canSubmit = name.trim().length > 0 && hasContact && emailValid && !submitting;
+  const canSubmit = name.trim().length > 0 && hasContact && emailValid && consent && !submitting;
   const prefilled = Boolean(defaultName || defaultPhone || defaultEmail);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setEmailTouched(true);
     if (!canSubmit) return;
-    onSubmit({ name: name.trim(), phone: phone.trim(), email: email.trim() });
+    onSubmit({ name: name.trim(), phone: phone.trim(), email: email.trim(), consentPd: true });
   }
 
   return (
@@ -109,6 +111,27 @@ export function ConfirmStep({
       {!hasContact && (
         <p className="-mt-2 text-xs text-muted">Укажите телефон или email, чтобы мы могли с вами связаться.</p>
       )}
+
+      <label className="flex items-start gap-2.5 text-sm">
+        <input
+          type="checkbox"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+          required
+          className="mt-0.5 h-4 w-4 shrink-0 accent-claret"
+        />
+        <span className="text-ink">
+          Согласен на обработку персональных данных{" "}
+          <Link
+            href="/privacy"
+            target="_blank"
+            rel="noopener"
+            className="text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
+          >
+            (подробнее)
+          </Link>
+        </span>
+      </label>
 
       {error && <p className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">{error}</p>}
 

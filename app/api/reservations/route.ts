@@ -93,10 +93,8 @@ export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
 
   const payload = await request.json().catch(() => ({}));
-  const { table_id, date, start_time, guest_name, guest_phone, guest_email, party_size } = payload as Record<
-    string,
-    unknown
-  >;
+  const { table_id, date, start_time, guest_name, guest_phone, guest_email, party_size, consent_pd } =
+    payload as Record<string, unknown>;
 
   // Rule-enforcing dates: never from the client's zone alone (see
   // enforcedDates).
@@ -140,6 +138,11 @@ export async function POST(request: NextRequest) {
   if (typeof date === "string" && date < today) {
     errors.date = "нельзя забронировать в прошлом";
   }
+  if (consent_pd !== true) {
+    errors.consent_pd = "необходимо согласие на обработку персональных данных";
+  }
+  // When the guest agreed - this request, as received by the server.
+  const consentAt = new Date().toISOString();
 
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ error: "validation_failed", details: errors }, { status: 400 });
@@ -182,6 +185,18 @@ export async function POST(request: NextRequest) {
   if (rpcError) {
     const mapped = mapRpcError(rpcError);
     return NextResponse.json(mapped.body, { status: mapped.status });
+  }
+
+  // Not part of the RPC so its signature (and every caller) stays as is. A
+  // failure here leaves a valid booking without its consent timestamp -
+  // logged with the id so it can be backfilled, not turned into a failed
+  // booking the guest would retry.
+  const { error: consentError } = await supabase
+    .from("reservations")
+    .update({ consent_at: consentAt })
+    .eq("id", reservationId as number);
+  if (consentError) {
+    console.error("[reservations.create] saving consent_at failed", { reservationId }, consentError);
   }
 
   const { data: reservation, error: fetchError } = await supabase
