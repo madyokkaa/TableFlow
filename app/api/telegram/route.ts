@@ -8,7 +8,9 @@ import { productionBotDeps } from "@/lib/telegram/deps";
 export const maxDuration = 60;
 
 function secretMatches(request: NextRequest): boolean {
-  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  // Trimmed: a value pasted into the Vercel dashboard can carry a stray
+  // space or newline, which would turn every update into a 401.
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
   if (!secret) {
     console.error("[telegram.webhook] TELEGRAM_WEBHOOK_SECRET is not configured - refusing updates");
     return false;
