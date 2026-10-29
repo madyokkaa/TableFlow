@@ -78,6 +78,12 @@ export const texts = {
     ru: "Напишите или скажите: на какой день, во сколько, сколько вас и как вас зовут.",
   } satisfies Record<Lang, string>,
 
+  /** "🎤 «…»" above the reply to a voice message (trimmed if very long). */
+  heard(text: string): string {
+    const shown = text.length > 300 ? `${text.slice(0, 300)}…` : text;
+    return `🎤 «${shown}»\n\n`;
+  },
+
   question(lang: Lang, missing: FieldName[], problems: { code: ProblemCode }[]): string {
     const reasons = problems.map((p) => PROBLEMS[lang][p.code]);
     const questions = missing.map((f) => QUESTIONS[lang][f]);

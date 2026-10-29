@@ -67,6 +67,23 @@ async function groqPost(path: string, makeBody: () => BodyInit, headers: Record<
   }
 }
 
+/** A style-and-vocabulary hint for Whisper (its `prompt`, max ~224 tokens):
+ * a sample of what booking messages here sound like, in both languages and
+ * mixed. It nudges recognition towards Kazakh spelling (ә, ғ, қ, ң, ө, ұ, ү,
+ * һ, і), the words guests actually use and numbers as people say them -
+ * Whisper otherwise tends to hear Kazakh as Russian. It carries no guest
+ * data. Overridable with GROQ_STT_PROMPT (empty = no hint). */
+export const STT_PROMPT =
+  "Сәлеметсіз бе! Ертең кешкі жетіге төрт адамға үстел брондағым келеді, атым Айгерім. " +
+  "Бүгін сағат сегізде екеуміз келеміз. Арғы күні түскі екіде, үшеуміз. Жеті жарымда, бес кісі, терезе жанында. " +
+  "Здравствуйте, хочу забронировать столик на завтра на семь вечера, нас будет четверо, меня зовут Дмитрий. " +
+  "В субботу в половине восьмого, вдвоём. Ертең в восемь, екі адам.";
+
+export function sttPrompt(): string {
+  const configured = process.env.GROQ_STT_PROMPT;
+  return configured === undefined ? STT_PROMPT : configured.trim();
+}
+
 export type Transcription = { text: string; durationSec: number | null; aiRequestId: number | null };
 
 /** Speech to text. The language isn't pinned - guests mix Kazakh and
@@ -81,6 +98,8 @@ export async function transcribe(audio: Blob, filename: string): Promise<Transcr
       form.append("model", model);
       form.append("response_format", "verbose_json");
       form.append("temperature", "0");
+      const prompt = sttPrompt();
+      if (prompt) form.append("prompt", prompt);
       return form;
     });
     const body = (await res.json().catch(() => null)) as { text?: unknown; duration?: unknown } | null;

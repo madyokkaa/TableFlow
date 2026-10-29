@@ -57,7 +57,7 @@
 
 ```bash
 npx tsx evals/booking/run.ts
-npx tsx evals/booking/run.ts --model openai/gpt-oss-20b --prompt-version extract_booking_v1
+npx tsx evals/booking/run.ts --model openai/gpt-oss-20b --prompt-version extract_booking_v2
 ```
 
 Без `--model` используется `GROQ_LLM_MODEL` (по умолчанию

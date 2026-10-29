@@ -204,6 +204,8 @@ describe("telegram bot dialogue", () => {
     expect(deps.transcribe).toHaveBeenCalledTimes(1);
     expect(deps.extract).toHaveBeenCalledWith("ертең кешкі 7-ге", NOW);
     expect(sessions.get(CHAT)?.draft.aiRequestIds).toEqual([6, 7]);
+    // The reply shows what was heard.
+    expect(last().text.startsWith("🎤 «ертең кешкі 7-ге»\n\n")).toBe(true);
   });
 
   it("answers with the website link and books nothing when AI_BOOKING_ENABLED=0", async () => {

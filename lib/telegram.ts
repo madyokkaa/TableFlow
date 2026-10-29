@@ -114,10 +114,32 @@ export async function getFileBlob(fileId: string): Promise<{ blob: Blob; filenam
   return withTimeout(async (signal) => {
     const res = await fetch(`${API}/file/bot${bot}/${file.file_path}`, { signal });
     if (!res.ok) throw new TelegramError(`tg_file_http_${res.status}`);
-    const blob = await res.blob();
-    if (blob.size > MAX_VOICE_BYTES) throw new TelegramError("tg_file_too_large");
-    return { blob, filename: file.file_path!.split("/").pop() || "voice.ogg" };
+    const data = await res.blob();
+    if (data.size > MAX_VOICE_BYTES) throw new TelegramError("tg_file_too_large");
+    return audioForTranscription(data, file.file_path!);
   });
+}
+
+// Voice notes arrive as Ogg/Opus named "*.oga"; Groq's speech-to-text picks
+// the format by extension and doesn't list .oga, so they're renamed .ogg
+// (same container) and typed explicitly.
+const AUDIO_TYPES: Record<string, string> = {
+  ogg: "audio/ogg",
+  opus: "audio/ogg",
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+  wav: "audio/wav",
+  webm: "audio/webm",
+  flac: "audio/flac",
+};
+
+export function audioForTranscription(data: Blob, filePath: string): { blob: Blob; filename: string } {
+  const base = filePath.split("/").pop() || "voice.ogg";
+  const dot = base.lastIndexOf(".");
+  let ext = dot >= 0 ? base.slice(dot + 1).toLowerCase() : "";
+  if (ext === "oga" || !AUDIO_TYPES[ext]) ext = "ogg";
+  const stem = dot >= 0 ? base.slice(0, dot) : base;
+  return { blob: new Blob([data], { type: AUDIO_TYPES[ext] }), filename: `${stem}.${ext}` };
 }
 
 export function inlineKeyboard(rows: InlineButton[][]): InlineKeyboard {

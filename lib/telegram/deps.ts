@@ -6,8 +6,14 @@ import { defaultClock, type BotDeps } from "./bot";
 import { supabaseSessionStore } from "./session";
 import { supabaseBookingStore } from "./store";
 
+/** The site's address for links from the bot. NEXT_PUBLIC_SITE_URL is baked
+ * in at build time, so a deploy built before it was set has none - then
+ * Vercel's own production domain (set at runtime) stands in. */
 export function siteUrl(): string | null {
-  return process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "") || null;
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  const vercelDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  return vercelDomain ? `https://${vercelDomain.replace(/\/+$/, "")}` : null;
 }
 
 /** AI_BOOKING_ENABLED=0 is the kill switch; anything else (or unset) leaves

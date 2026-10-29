@@ -107,7 +107,7 @@ describe("extractBooking", () => {
     expect(body).toMatchObject({ temperature: 0, seed: 42, response_format: { type: "json_object" }, model: "openai/gpt-oss-20b" });
     expect(body.messages[0].content).toContain("2026-10-31 — сенбі / суббота — ертең / завтра");
     expect(body.messages.at(-1)).toEqual({ role: "user", content: "ертең кешкі 7-ге 4 адам, атым Айгерім" });
-    expect(PROMPT_VERSION).toBe("extract_booking_v1");
+    expect(PROMPT_VERSION).toBe("extract_booking_v2");
   });
 
   it("re-asks only for what the model got wrong", async () => {
@@ -164,6 +164,15 @@ describe("baselineExtract", () => {
     ["жұмаға 4 кісі, менің атым Ерлан", { date: "2026-10-30", party_size: 4, name: "Ерлан" }],
     ["сегодня в 19.30, двое, телефон 87011234567", { date: "2026-10-30", time: "19:30", party_size: 2, name: null }],
     ["забронировать стол на воскресенье", { date: "2026-11-01", time: null, party_size: null }],
+    // Numbers in words, as speech recognition writes them.
+    ["ертең кешкі жетіге төрт адам, атым Айгерім", { date: "2026-10-31", time: "19:00", party_size: 4, name: "Айгерім" }],
+    ["бүгін сағат сегізде екеуміз", { date: "2026-10-30", time: "20:00", party_size: 2 }],
+    ["ертең жеті жарымда бес кісі", { date: "2026-10-31", time: "19:30", party_size: 5 }],
+    ["сенбі күні жетіге келеміз, алты адам", { date: "2026-10-31", time: "19:00", party_size: 6 }],
+    ["завтра в семь вечера, нас четверо, меня зовут Мадияр", { date: "2026-10-31", time: "19:00", party_size: 4, name: "Мадияр" }],
+    ["на завтра к восьми, на семь человек", { date: "2026-10-31", time: "20:00", party_size: 7 }],
+    ["в субботу в половине восьмого, вдвоём", { date: "2026-10-31", time: "19:30", party_size: 2 }],
+    ["столик на четыре на завтра", { date: "2026-10-31", time: null }],
   ];
 
   it.each(cases)("%s", (text, expected) => {
@@ -184,5 +193,23 @@ describe("transcribe", () => {
     expect(form.get("temperature")).toBe("0");
     expect(form.get("response_format")).toBe("verbose_json");
     expect(form.has("language")).toBe(false);
+    // A kk/ru booking-vocabulary hint for Whisper, and a way to turn it off.
+    expect(String(form.get("prompt"))).toContain("кешкі жетіге");
+    vi.stubEnv("GROQ_STT_PROMPT", "");
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ text: "x" }), { status: 200 }));
+    await transcribe(new Blob([new Uint8Array([1])]), "voice.ogg");
+    expect((fetchMock.mock.calls[1][1].body as FormData).has("prompt")).toBe(false);
+  });
+});
+
+describe("voice files for Groq", () => {
+  it("renames Telegram's .oga voice notes to .ogg with an audio type", async () => {
+    const { audioForTranscription } = await import("../lib/telegram");
+    const voice = audioForTranscription(new Blob([new Uint8Array(4)]), "voice/file_12.oga");
+    expect(voice.filename).toBe("file_12.ogg");
+    expect(voice.blob.type).toBe("audio/ogg");
+    expect(voice.blob.size).toBe(4);
+    expect(audioForTranscription(new Blob([]), "music/file_3.mp3").filename).toBe("file_3.mp3");
+    expect(audioForTranscription(new Blob([]), "voice/file_4").filename).toBe("file_4.ogg");
   });
 });
