@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requestTimeZone } from "@/lib/requestTimeZone";
+import { RATE_LIMITS, checkRateLimit } from "@/lib/rateLimit";
 import {
   DEFAULT_DURATION_MINUTES,
   candidateStartTimes,
@@ -22,6 +23,9 @@ type TableRow = {
 type ActiveReservation = { table_id: number; start_time: string; duration_minutes: number };
 
 export async function GET(request: NextRequest) {
+  const limited = await checkRateLimit(request, "availability", RATE_LIMITS.availability);
+  if (limited) return limited;
+
   const { searchParams } = new URL(request.url);
   const dateStr = searchParams.get("date");
   const partySizeStr = searchParams.get("party_size");
