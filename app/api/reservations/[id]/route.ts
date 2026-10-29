@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
-import { changedFields, logAudit } from "@/lib/audit";
+import { changedFields, logAudit, valueChanges } from "@/lib/audit";
 import { notifyGuestOfStaffChange, supabaseNotifyDeps } from "@/lib/telegram/notify";
 import { ALLOWED_STATUS_TRANSITIONS, RESERVATION_STATUSES, STATUS_LABELS_RU, type ReservationStatus, mapRpcError } from "@/lib/reservations";
 
@@ -17,6 +17,9 @@ const EDITABLE_FIELDS = [
   "table_ids",
   "cancellation_reason",
 ] as const;
+// Of those, the ones without personal data - their values are journalled
+// too (before → after). Name, phone, email and the reason stay names only.
+const VALUE_FIELDS = ["date", "start_time", "duration_minutes", "party_size", "table_ids"] as const;
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -195,11 +198,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const statusChanged = nextStatus !== undefined && nextStatus !== current.status;
-  const fields = changedFields(
-    payload as Record<string, unknown>,
-    { ...current, table_ids: current.reservation_tables.map((rt: { table_id: number }) => rt.table_id) },
-    EDITABLE_FIELDS
-  );
+  const before = { ...current, table_ids: current.reservation_tables.map((rt: { table_id: number }) => rt.table_id) };
+  const fields = changedFields(payload as Record<string, unknown>, before, EDITABLE_FIELDS);
+  const changes = valueChanges(payload as Record<string, unknown>, before, VALUE_FIELDS);
   await logAudit(supabase, {
     actor: staff.id,
     role: "staff",
@@ -210,7 +211,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         : "reservation.status_changed",
     entity: "reservation",
     entityId: reservationId,
-    details: statusChanged ? { from: current.status, to: nextStatus, by: "host", fields } : { fields },
+    details: statusChanged ? { from: current.status, to: nextStatus, by: "host", fields, changes } : { fields, changes },
   });
 
   const { data: updated, error: fetchError } = await supabase
