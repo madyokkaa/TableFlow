@@ -7,6 +7,7 @@ import { getFloorData } from "@/lib/floorData";
 import { tableSize } from "@/lib/tableShapes";
 import { pluralize } from "@/lib/ru";
 import { planUnits } from "@/components/floor-plan/PlanShapes";
+import { HallObjectsLayer, useHallObjects } from "@/components/floor-plan/HallObjectsLayer";
 import type { Hall } from "./HallForm";
 import type { DiningTable } from "./TableForm";
 
@@ -51,6 +52,7 @@ function PlanScanner({ open }: { open: boolean }) {
   const room = hallPlanSize(hall ?? {});
   const unit = planUnits(room.w);
   const shown = hall ? tables.filter((t) => t.hall_id === hall.id) : [];
+  const objects = useHallObjects(hall?.id ?? null);
 
   return (
     <div
@@ -75,13 +77,14 @@ function PlanScanner({ open }: { open: boolean }) {
         }}
         aria-hidden="true"
       >
+        <HallObjectsLayer objects={objects} room={room} unit={unit} />
         {!open && <span className="sl-scan" />}
         {shown.map((t, i) => {
           const size = tableSize(t.shape, t.max_capacity);
           return (
             <span
               key={t.id}
-              className="sl-table"
+              className="sl-table z-[2]"
               style={{
                 left: `${(t.pos_x / room.w) * 100}%`,
                 top: `${(t.pos_y / room.h) * 100}%`,
