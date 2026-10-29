@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import type { Session } from "@supabase/supabase-js";
-import { CalendarDays, ChevronLeft, DoorOpen, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, DoorOpen, LayoutDashboard, LogOut, ScrollText, Users } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { unlockAudio } from "@/lib/notificationSound";
 import { clearStaffDevice, staffDeviceExpired } from "@/lib/staffDevice";
@@ -21,6 +21,7 @@ const NAV = [
   { href: "/hostess", label: "Брони", icon: CalendarDays },
   { href: "/hostess/halls", label: "Залы и столы", icon: DoorOpen },
   { href: "/hostess/staff", label: "Сотрудники", icon: Users },
+  { href: "/hostess/audit", label: "Журнал", icon: ScrollText },
 ] as const;
 
 const BOOKINGS_HREF = "/hostess";

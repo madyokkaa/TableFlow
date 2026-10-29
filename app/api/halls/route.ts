@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { logAudit } from "@/lib/audit";
 import { parseHallLayoutFields } from "@/lib/floorPlan";
 import { MIGRATION_PENDING_MESSAGE, isMissingSchemaError } from "@/lib/schemaErrors";
 
@@ -60,6 +61,8 @@ export async function POST(request: NextRequest) {
     console.error("[halls.create] insert failed", error);
     return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
   }
+
+  await logAudit(supabase, { actor: staff.id, role: "staff", action: "hall.created", entity: "hall", entityId: data.id });
 
   return NextResponse.json(data, { status: 201 });
 }

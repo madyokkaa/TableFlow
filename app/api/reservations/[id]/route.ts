@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
+import { changedFields, logAudit } from "@/lib/audit";
 import { ALLOWED_STATUS_TRANSITIONS, RESERVATION_STATUSES, STATUS_LABELS_RU, type ReservationStatus, mapRpcError } from "@/lib/reservations";
+
+// Field names (never values) go into the audit log.
+const EDITABLE_FIELDS = [
+  "date",
+  "start_time",
+  "duration_minutes",
+  "party_size",
+  "guest_name",
+  "guest_phone",
+  "guest_email",
+  "table_ids",
+  "cancellation_reason",
+] as const;
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -176,6 +190,21 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       console.error("[reservations.update] saving cancellation reason failed", reasonError);
     }
   }
+
+  const statusChanged = nextStatus !== undefined && nextStatus !== current.status;
+  const fields = changedFields(payload as Record<string, unknown>, EDITABLE_FIELDS);
+  await logAudit(supabase, {
+    actor: staff.id,
+    role: "staff",
+    action: !statusChanged
+      ? "reservation.updated"
+      : nextStatus === "cancelled"
+        ? "reservation.cancelled"
+        : "reservation.status_changed",
+    entity: "reservation",
+    entityId: reservationId,
+    details: statusChanged ? { from: current.status, to: nextStatus, by: "host", fields } : { fields },
+  });
 
   const { data: updated, error: fetchError } = await supabase
     .from("reservations")
