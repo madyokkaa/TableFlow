@@ -99,6 +99,9 @@ export function BookingDrawer({
   const [guestPhone, setGuestPhone] = useState(formatPhoneInput(editing?.guest_phone ?? ""));
   const [guestEmail, setGuestEmail] = useState(editing?.guest_email ?? "");
   const [emailTouched, setEmailTouched] = useState(false);
+  // New bookings go through the public endpoint, which requires the guest's
+  // consent to data processing - staff confirm they obtained it.
+  const [guestConsent, setGuestConsent] = useState(false);
   const [partySize, setPartySize] = useState(editing?.party_size ?? 2);
   const [date, setDate] = useState(editing?.date ?? (target.kind === "create" ? target.date : restaurantTodayIso()));
   const [duration, setDuration] = useState(editing?.duration_minutes ?? DEFAULT_DURATION_MINUTES);
@@ -144,6 +147,7 @@ export function BookingDrawer({
     guestName.trim() &&
     hasContact &&
     emailValid &&
+    (editing || guestConsent) &&
     tableIds.length > 0 &&
     !!startTime &&
     !slotTaken &&
@@ -207,6 +211,7 @@ export function BookingDrawer({
           guest_phone: guestPhone.trim() || undefined,
           guest_email: guestEmail.trim() || undefined,
           party_size: partySize,
+          consent_pd: guestConsent,
         }),
       });
       if (!res.ok) {
@@ -335,6 +340,17 @@ export function BookingDrawer({
               </label>
               {!hasContact && guestName.trim() && (
                 <span className="text-xs font-medium text-[#a8958e] sm:col-span-2">Нужен телефон или email</span>
+              )}
+              {!editing && (
+                <label className="flex items-start gap-2.5 text-[13px] font-semibold sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={guestConsent}
+                    onChange={(e) => setGuestConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-claret"
+                  />
+                  Гость согласен на обработку персональных данных
+                </label>
               )}
             </div>
 

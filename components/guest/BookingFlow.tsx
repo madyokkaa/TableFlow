@@ -184,7 +184,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
     setSelectedTime((current) => (current === time ? null : time));
   }
 
-  async function handleConfirm(fields: { name: string; phone: string; email: string }) {
+  async function handleConfirm(fields: { name: string; phone: string; email: string; consentPd: true }) {
     if (!selectedTable || !selectedTime) return;
     setSubmitting(true);
     setSubmitError(null);
@@ -199,6 +199,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
           guest_phone: fields.phone || null,
           guest_email: fields.email || null,
           party_size: partySize,
+          consent_pd: fields.consentPd,
         }),
       });
       if (!res.ok) {
