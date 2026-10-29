@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { STALE_RESERVATION_RETENTION_DAYS } from "@/lib/reservationCleanup";
 import { pluralize } from "@/lib/ru";
+import { EraseDataForm } from "@/components/guest/EraseDataForm";
 
 export const metadata: Metadata = {
   title: "Персональные данные · TableFlow",
@@ -111,13 +112,25 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="Как удалить свои данные">
-          {PRIVACY_CONTACT ? (
-            <p>
-              Напишите нам: <b className="font-semibold text-ink">{PRIVACY_CONTACT}</b>.
-            </p>
-          ) : (
-            <p>Обратитесь в ресторан, в котором бронировали стол.</p>
-          )}
+          <p>
+            Укажите email или телефон, с которым бронировали. Во всех завершённых, отменённых и уже прошедших бронях с
+            этим контактом имя заменится на «Удалено по запросу гостя», телефон и email сотрутся, бронь отвяжется от
+            аккаунта. Дата, время и число гостей останутся без связи с вами.
+          </p>
+          <p>
+            Предстоящие брони так не удаляются, чтобы никто не мог снять чужую бронь: сначала отмените её — в аккаунте
+            или обратившись в ресторан.
+          </p>
+          <EraseDataForm />
+          <p>
+            Форма не удаляет аккаунт и сохранённые в его профиле имя и телефон.
+            {PRIVACY_CONTACT && (
+              <>
+                {" "}
+                По этому и другим вопросам о персональных данных: <b className="font-semibold text-ink">{PRIVACY_CONTACT}</b>.
+              </>
+            )}
+          </p>
         </Section>
       </main>
     </div>
