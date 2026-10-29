@@ -61,6 +61,34 @@ function comparable(value: unknown): string {
   return JSON.stringify(value);
 }
 
+export type ValueChange = { from: unknown; to: unknown };
+
+function storable(value: unknown): unknown {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    return /^\d{2}:\d{2}:00$/.test(trimmed) ? trimmed.slice(0, 5) : trimmed;
+  }
+  if (Array.isArray(value)) return [...value].sort();
+  return value;
+}
+
+/** Before → after for the given keys that a PATCH body actually changes.
+ * Only for fields that hold no personal data (dates, times, sizes, table
+ * ids, statuses, labels) - callers pass those keys only. */
+export function valueChanges(
+  body: Record<string, unknown>,
+  current: Record<string, unknown>,
+  keys: readonly string[]
+): Record<string, ValueChange> {
+  const changes: Record<string, ValueChange> = {};
+  for (const key of changedFields(body, current, keys)) {
+    changes[key] = { from: storable(current[key]), to: storable(body[key]) };
+  }
+  return changes;
+}
+
 /** Names (never values) of the keys a PATCH body sets to something other
  * than what's stored, for `details.fields` - edit forms resend every field,
  * so "present in the body" alone would list them all. */

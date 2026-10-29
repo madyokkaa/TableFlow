@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
-import { logAudit } from "@/lib/audit";
+import { logAudit, valueChanges } from "@/lib/audit";
 import { completeExpiredReservations, deleteStaleReservations } from "@/lib/reservationCleanup";
 import { isRotation } from "@/lib/floorPlan";
 import { MIGRATION_PENDING_MESSAGE, isMissingSchemaError } from "@/lib/schemaErrors";
@@ -89,6 +89,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const supabase = createAdminClient();
+  // The row as it was, for the journal's before → after.
+  const { data: before } = await supabase.from("dining_tables").select("*").eq("id", tableId).maybeSingle();
   const { data, error } = await supabase.from("dining_tables").update(update).eq("id", tableId).select().maybeSingle();
 
   if (error) {
@@ -136,7 +138,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     action: "table.updated",
     entity: "table",
     entityId: tableId,
-    details: { fields: Object.keys(update) },
+    details: { fields: Object.keys(update), changes: before ? valueChanges(update, before, Object.keys(update)) : {} },
   });
 
   return NextResponse.json(data);

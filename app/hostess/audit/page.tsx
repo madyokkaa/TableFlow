@@ -1,22 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { apiFetch, parseError } from "@/lib/api";
 import { AdminShell } from "@/components/hostess/AdminShell";
 import { CAPTION, INPUT } from "@/components/hostess/hall-editor/controls";
-import { STATUS_LABELS_RU, type ReservationStatus } from "@/lib/reservations";
-
-type AuditItem = {
-  id: number;
-  at: string;
-  actor_user_id: string | null;
-  actor_role: "staff" | "guest" | "system";
-  actor_email: string | null;
-  action: string;
-  entity: string;
-  entity_id: string | null;
-  details: { from?: string; to?: string; fields?: string[]; count?: number; deleted?: number; [key: string]: unknown };
-};
+import { ChevronDown } from "lucide-react";
+import { AuditDetails, objectSummary, statusLabel, type AuditItem } from "@/components/hostess/AuditDetails";
 
 const NETWORK_ERROR = "Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.";
 
@@ -53,10 +42,6 @@ const ENTITY_LABELS: Record<string, string> = {
 
 const ENTITY_FILTERS = ["", "reservation", "table", "hall", "hall_object", "staff"] as const;
 
-function statusLabel(status: string | undefined): string {
-  return status ? (STATUS_LABELS_RU[status as ReservationStatus] ?? status) : "";
-}
-
 function formatAt(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", {
     day: "numeric",
@@ -74,11 +59,12 @@ function actorLabel(item: AuditItem): string {
 }
 
 function detailsLabel(item: AuditItem): string | null {
-  const { from, to, fields, count, deleted } = item.details;
+  const { from, to, fields, count, deleted, changes } = item.details;
   if (from && to) return `${statusLabel(from)} → ${statusLabel(to)}`;
+  const changed = [...new Set([...Object.keys(changes ?? {}), ...(fields ?? [])])];
+  if (changed.length) return `Изменено полей: ${changed.length}`;
   if (typeof count === "number") return `Обезличено записей: ${count}`;
   if (typeof deleted === "number") return `Удалено броней: ${deleted}`;
-  if (fields && fields.length) return `Поля: ${fields.join(", ")}`;
   return null;
 }
 
@@ -88,6 +74,8 @@ function AuditJournal() {
   const [entity, setEntity] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [tableLabels, setTableLabels] = useState<Record<string, string>>({});
 
   const fetchPage = useCallback(
     async (before: number | null) => {
@@ -96,7 +84,11 @@ function AuditJournal() {
       if (entity) params.set("entity", entity);
       const res = await apiFetch(`/api/audit?${params}`);
       if (!res.ok) throw new Error(await parseError(res));
-      return (await res.json()) as { items: AuditItem[]; next_before: number | null };
+      return (await res.json()) as {
+        items: AuditItem[];
+        table_labels?: Record<string, string>;
+        next_before: number | null;
+      };
     },
     [entity]
   );
@@ -107,6 +99,7 @@ function AuditJournal() {
       .then((page) => {
         if (cancelled) return;
         setItems(page.items);
+        setTableLabels(page.table_labels ?? {});
         setNextBefore(page.next_before);
         setError(null);
       })
@@ -126,6 +119,7 @@ function AuditJournal() {
     try {
       const page = await fetchPage(nextBefore);
       setItems((current) => [...(current ?? []), ...page.items]);
+      setTableLabels((current) => ({ ...current, ...page.table_labels }));
       setNextBefore(page.next_before);
     } catch (err) {
       setError(err instanceof TypeError ? NETWORK_ERROR : (err as Error).message);
@@ -178,7 +172,7 @@ function AuditJournal() {
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
                 <tr className="border-b border-[#2a201d]">
-                  {["Время", "Кто", "Действие", "Объект"].map((h) => (
+                  {["Время", "Кто", "Действие", "Объект", ""].map((h) => (
                     <th key={h} scope="col" className={`${CAPTION} px-5 py-3 font-normal`}>
                       {h}
                     </th>
@@ -188,25 +182,65 @@ function AuditJournal() {
               <tbody>
                 {items.map((item) => {
                   const details = detailsLabel(item);
+                  const summary = objectSummary(item);
+                  const open = openId === item.id;
+                  const toggle = () => setOpenId(open ? null : item.id);
                   return (
-                    <tr key={item.id} className="border-b border-[#2a201d] last:border-b-0">
-                      <td className="whitespace-nowrap px-5 py-3 font-mono text-xs tabular-nums text-muted">
-                        <time dateTime={item.at}>{formatAt(item.at)}</time>
-                      </td>
-                      <td className="max-w-[220px] truncate px-5 py-3" title={item.actor_email ?? undefined}>
-                        {actorLabel(item)}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className="font-semibold text-ink">{ACTION_LABELS[item.action] ?? item.action}</span>
-                        {details && <span className="block text-xs text-muted">{details}</span>}
-                      </td>
-                      <td className="whitespace-nowrap px-5 py-3 text-muted">
-                        {ENTITY_LABELS[item.entity] ?? item.entity}
-                        {item.entity_id && item.entity !== "staff" && (
-                          <span className="font-mono text-xs"> #{item.entity_id}</span>
-                        )}
-                      </td>
-                    </tr>
+                    <Fragment key={item.id}>
+                      <tr
+                        onClick={toggle}
+                        className={`cursor-pointer border-b border-[#2a201d] transition-colors hover:bg-surface-raised ${open ? "bg-surface-raised" : ""}`}
+                      >
+                        <td className="whitespace-nowrap px-5 py-3 font-mono text-xs tabular-nums text-muted">
+                          <time dateTime={item.at}>{formatAt(item.at)}</time>
+                        </td>
+                        <td className="max-w-[220px] truncate px-5 py-3" title={item.actor_email ?? undefined}>
+                          {actorLabel(item)}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="font-semibold text-ink">{ACTION_LABELS[item.action] ?? item.action}</span>
+                          {details && <span className="block text-xs text-muted">{details}</span>}
+                        </td>
+                        <td className="max-w-[320px] px-5 py-3 text-muted">
+                          <span className="whitespace-nowrap">
+                            {ENTITY_LABELS[item.entity] ?? item.entity}
+                            {item.entity_id && item.entity !== "staff" && (
+                              <span className="font-mono text-xs"> #{item.entity_id}</span>
+                            )}
+                          </span>
+                          {summary ? (
+                            <span className="block truncate text-xs text-ink/80">{summary}</span>
+                          ) : (
+                            item.entity_id && <span className="block text-xs">удалён</span>
+                          )}
+                        </td>
+                        <td className="w-12 px-3 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggle();
+                            }}
+                            aria-expanded={open}
+                            aria-label={open ? "Скрыть подробности" : "Показать подробности"}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-[#2a201d] hover:text-ink"
+                          >
+                            <ChevronDown
+                              className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                              strokeWidth={2.2}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        </td>
+                      </tr>
+                      {open && (
+                        <tr className="border-b border-[#2a201d]">
+                          <td colSpan={5} className="p-0">
+                            <AuditDetails item={item} tableLabels={tableLabels} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>

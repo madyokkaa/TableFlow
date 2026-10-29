@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
-import { logAudit } from "@/lib/audit";
+import { logAudit, valueChanges } from "@/lib/audit";
 import { parseHallLayoutFields } from "@/lib/floorPlan";
 import { MIGRATION_PENDING_MESSAGE, isMissingSchemaError } from "@/lib/schemaErrors";
 
@@ -41,6 +41,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const supabase = createAdminClient();
+  const { data: before } = await supabase.from("halls").select("*").eq("id", hallId).maybeSingle();
   const { data, error } = await supabase.from("halls").update(update).eq("id", hallId).select().maybeSingle();
 
   if (error) {
@@ -66,7 +67,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     action: "hall.updated",
     entity: "hall",
     entityId: hallId,
-    details: { fields: Object.keys(update) },
+    details: { fields: Object.keys(update), changes: before ? valueChanges(update, before, Object.keys(update)) : {} },
   });
 
   return NextResponse.json(data);

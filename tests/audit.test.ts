@@ -109,7 +109,7 @@ describe("audit log", () => {
         actor_user_id: staffUserId,
         actor_role: "staff",
         action: "reservation.status_changed",
-        details: { from: "pending", to: "confirmed", by: "host", fields: [] },
+        details: { from: "pending", to: "confirmed", by: "host", fields: [], changes: {} },
       },
     ]);
     expect(JSON.stringify(data)).not.toContain("Audit Guest");
@@ -142,6 +142,34 @@ describe("audit log", () => {
   it("GET /api/audit requires a staff token", async () => {
     const res = await listAudit(jsonRequest("/api/audit", "GET", null));
     expect(res.status).toBe(401);
+  });
+
+  it("journals before → after for a reschedule, and GET /api/audit shows the booking", async () => {
+    const res = await patchReservation(
+      jsonRequest(`/api/reservations/${reservationId}`, "PATCH", staffToken, { start_time: "20:00", guest_name: "Audit Guest 2" }),
+      { params: Promise.resolve({ id: String(reservationId) }) }
+    );
+    expect(res.status).toBe(200);
+    const { data } = await admin
+      .from("audit_log")
+      .select("action, details")
+      .eq("entity", "reservation")
+      .eq("entity_id", String(reservationId))
+      .order("id", { ascending: false })
+      .limit(1)
+      .single();
+    expect(data?.action).toBe("reservation.updated");
+    expect(data?.details).toEqual({
+      fields: ["start_time", "guest_name"],
+      changes: { start_time: { from: "18:00", to: "20:00" } },
+    });
+    // The guest's new name is not in the journal.
+    expect(JSON.stringify(data)).not.toContain("Audit Guest 2");
+
+    const list = await listAudit(jsonRequest("/api/audit?entity=reservation&limit=5", "GET", staffToken));
+    const page = await list.json();
+    const item = page.items.find((i: { entity_id: string }) => i.entity_id === String(reservationId));
+    expect(item.object).toMatchObject({ id: reservationId, guest_name: "Audit Guest 2", start_time: "20:00:00" });
   });
 
   it("GET /api/audit lists newest first, filters and pages by id", async () => {

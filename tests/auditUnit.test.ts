@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedFields } from "../lib/audit";
+import { changedFields, valueChanges } from "../lib/audit";
 
 describe("changedFields", () => {
   const keys = ["date", "start_time", "guest_name", "guest_phone", "guest_email", "table_ids", "party_size"] as const;
@@ -25,5 +25,16 @@ describe("changedFields", () => {
 
   it("skips keys the body doesn't set", () => {
     expect(changedFields({ party_size: 3 }, current, keys)).toEqual(["party_size"]);
+  });
+});
+
+describe("valueChanges", () => {
+  it("keeps before → after only for fields that really changed", () => {
+    const current = { date: "2026-11-20", start_time: "19:00:00", party_size: 2, table_ids: [3, 1] };
+    const body = { date: "2026-11-20", start_time: "20:30", party_size: 4, table_ids: [1, 3] };
+    expect(valueChanges(body, current, ["date", "start_time", "party_size", "table_ids"])).toEqual({
+      start_time: { from: "19:00", to: "20:30" },
+      party_size: { from: 2, to: 4 },
+    });
   });
 });
