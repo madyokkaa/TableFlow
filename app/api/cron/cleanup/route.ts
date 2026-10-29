@@ -1,19 +1,8 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { completeExpiredReservations, deleteStaleReservations } from "@/lib/reservationCleanup";
 import { logAudit } from "@/lib/audit";
-
-function authorized(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    console.error("[cron.cleanup] CRON_SECRET is not configured - refusing to run");
-    return false;
-  }
-  const given = Buffer.from(request.headers.get("authorization") ?? "");
-  const expected = Buffer.from(`Bearer ${secret}`);
-  return given.length === expected.length && timingSafeEqual(given, expected);
-}
+import { cronAuthorized } from "@/lib/cronAuth";
 
 // Daily housekeeping, called by Vercel Cron (vercel.json), which sends
 // `Authorization: Bearer $CRON_SECRET`: close bookings whose time has
@@ -21,7 +10,7 @@ function authorized(request: NextRequest): boolean {
 // ran when a table was deleted), and drop rate-limit windows older than a
 // day.
 export async function GET(request: NextRequest) {
-  if (!authorized(request)) {
+  if (!cronAuthorized(request, "cron.cleanup")) {
     return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
