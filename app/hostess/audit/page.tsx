@@ -15,7 +15,7 @@ type AuditItem = {
   action: string;
   entity: string;
   entity_id: string | null;
-  details: { from?: string; to?: string; fields?: string[]; count?: number; [key: string]: unknown };
+  details: { from?: string; to?: string; fields?: string[]; count?: number; deleted?: number; [key: string]: unknown };
 };
 
 const NETWORK_ERROR = "Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.";
@@ -39,6 +39,7 @@ const ACTION_LABELS: Record<string, string> = {
   "staff.removed": "Сотрудник удалён",
   "staff.password_reset": "Ссылка для сброса пароля",
   "guest_data.erased": "Удаление данных по запросу гостя",
+  "reservation.cleanup": "Плановая очистка старых броней",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -73,9 +74,10 @@ function actorLabel(item: AuditItem): string {
 }
 
 function detailsLabel(item: AuditItem): string | null {
-  const { from, to, fields, count } = item.details;
+  const { from, to, fields, count, deleted } = item.details;
   if (from && to) return `${statusLabel(from)} → ${statusLabel(to)}`;
   if (typeof count === "number") return `Обезличено записей: ${count}`;
+  if (typeof deleted === "number") return `Удалено броней: ${deleted}`;
   if (fields && fields.length) return `Поля: ${fields.join(", ")}`;
   return null;
 }
