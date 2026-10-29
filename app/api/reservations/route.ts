@@ -5,6 +5,7 @@ import { getAuthenticatedUser, requireStaff } from "@/lib/supabase/auth";
 import { RESERVATION_STATUSES, STATUS_LABELS_RU, mapRpcError } from "@/lib/reservations";
 import { DEFAULT_DURATION_MINUTES } from "@/lib/scheduling";
 import { completeExpiredReservations } from "@/lib/reservationCleanup";
+import { RATE_LIMITS, checkRateLimit } from "@/lib/rateLimit";
 
 // Staff-only: list reservations with optional filters.
 export async function GET(request: NextRequest) {
@@ -86,6 +87,9 @@ export async function GET(request: NextRequest) {
 // since a stale client-side session is not something a guest here to book
 // a table should have to troubleshoot.
 export async function POST(request: NextRequest) {
+  const limited = await checkRateLimit(request, "reservations.create", RATE_LIMITS.reservationCreate);
+  if (limited) return limited;
+
   const user = await getAuthenticatedUser(request);
 
   const payload = await request.json().catch(() => ({}));
