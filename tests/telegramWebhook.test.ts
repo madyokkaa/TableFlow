@@ -13,7 +13,7 @@ vi.mock("next/server", async (importOriginal) => ({
 }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc }) }));
 vi.mock("@/lib/telegram/bot", () => ({ handleUpdate }));
-vi.mock("@/lib/telegram/deps", () => ({ productionBotDeps: () => ({}) }));
+vi.mock("@/lib/telegram/deps", () => ({ productionBotDeps: () => ({}), siteUrl: () => "https://example.test" }));
 
 const { POST } = await import("../app/api/telegram/route");
 

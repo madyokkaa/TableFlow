@@ -186,3 +186,15 @@ describe("transcribe", () => {
     expect(form.has("language")).toBe(false);
   });
 });
+
+describe("voice files for Groq", () => {
+  it("renames Telegram's .oga voice notes to .ogg with an audio type", async () => {
+    const { audioForTranscription } = await import("../lib/telegram");
+    const voice = audioForTranscription(new Blob([new Uint8Array(4)]), "voice/file_12.oga");
+    expect(voice.filename).toBe("file_12.ogg");
+    expect(voice.blob.type).toBe("audio/ogg");
+    expect(voice.blob.size).toBe(4);
+    expect(audioForTranscription(new Blob([]), "music/file_3.mp3").filename).toBe("file_3.mp3");
+    expect(audioForTranscription(new Blob([]), "voice/file_4").filename).toBe("file_4.ogg");
+  });
+});

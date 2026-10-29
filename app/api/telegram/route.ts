@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { after, NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleUpdate, type TgUpdate } from "@/lib/telegram/bot";
-import { productionBotDeps } from "@/lib/telegram/deps";
+import { productionBotDeps, siteUrl } from "@/lib/telegram/deps";
 
 // Room for a voice download plus two Groq calls after the 200 is sent.
 export const maxDuration = 60;
@@ -32,6 +32,7 @@ export async function GET() {
     groq_key_set: !!process.env.GROQ_API_KEY?.trim(),
     supabase_set: !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY,
     ai_booking_enabled: process.env.AI_BOOKING_ENABLED?.trim() !== "0",
+    site_url: siteUrl(),
     vercel_env: process.env.VERCEL_ENV ?? null,
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
   });
