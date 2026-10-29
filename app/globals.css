@@ -1,0 +1,1471 @@
+@import "tailwindcss";
+
+/*
+  TableFlow design tokens.
+  Direction: a well-run dining room after dark - warm near-black wood tones,
+  one soft rose accent, a serif display face for warmth paired with a precise
+  sans/mono for the operational (hostess) side. Single dark palette, matching
+  the redesign prototypes in design-prototypes/.
+
+  Token names are kept from the earlier paper/ink system (paper = page
+  background, claret = the one accent) so every existing component picks the
+  new palette up without a rename.
+
+  Gold is a second, deliberately rare accent - reserved for celebratory
+  moments (booking success, badges) so it reads as a highlight, not part of
+  the everyday palette the accent already covers.
+*/
+:root {
+  color-scheme: dark;
+
+  --color-paper: #140f0e;
+  --color-surface: #1d1614;
+  --color-surface-raised: #211915;
+  --color-ink: #f4ebe6;
+  --color-muted: #b3a19a;
+  --color-line: #2f2421;
+  --color-line-strong: #3a2c28;
+
+  --color-claret: #ec8fa3;
+  --color-claret-strong: #f6b7c4;
+  --color-claret-tint: #3b2229;
+  /* Text/icons sitting on any light fill (accent, status). */
+  --color-on-accent: #2a0f17;
+
+  --color-gold: #e0b872;
+  --color-gold-strong: #f0cf98;
+  --color-gold-tint: #3a2f16;
+
+  --color-status-pending: #e3b55e;
+  --color-status-pending-tint: #2b2213;
+  --color-status-confirmed: #7fd1a1;
+  --color-status-confirmed-tint: #18201a;
+  --color-status-cancelled: #e8806f;
+  --color-status-cancelled-tint: #221614;
+  --color-status-noshow: #a9b0b8;
+  --color-status-noshow-tint: #242629;
+
+  --shadow-color: 0 0 0;
+  --shadow-soft: 0 1px 2px rgb(var(--shadow-color) / 0.3), 0 1px 1px rgb(var(--shadow-color) / 0.2);
+  --shadow-elevated: 0 8px 22px -8px rgb(var(--shadow-color) / 0.55), 0 2px 6px -2px rgb(var(--shadow-color) / 0.35);
+  --shadow-floating: 0 30px 60px -20px rgb(var(--shadow-color) / 0.8), 0 8px 20px -8px rgb(var(--shadow-color) / 0.4);
+
+  /* A slight overshoot - used for tactile press/pop moments (motion's
+     spring type covers the rest), not for anything that scrolls text. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+  --color-claret: var(--color-claret);
+  --color-claret-strong: var(--color-claret-strong);
+  --color-claret-tint: var(--color-claret-tint);
+  --color-on-accent: var(--color-on-accent);
+  --color-gold: var(--color-gold);
+  --color-gold-strong: var(--color-gold-strong);
+  --color-gold-tint: var(--color-gold-tint);
+  --color-status-pending: var(--color-status-pending);
+  --color-status-pending-tint: var(--color-status-pending-tint);
+  --color-status-confirmed: var(--color-status-confirmed);
+  --color-status-confirmed-tint: var(--color-status-confirmed-tint);
+  --color-status-cancelled: var(--color-status-cancelled);
+  --color-status-cancelled-tint: var(--color-status-cancelled-tint);
+  --color-status-noshow: var(--color-status-noshow);
+  --color-status-noshow-tint: var(--color-status-noshow-tint);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-elevated: var(--shadow-elevated);
+  --shadow-floating: var(--shadow-floating);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/*
+  Brand scrollbar: a thin guide rail with a floating capsule thumb that
+  turns rose on hover. The track is a 2px line drawn by a gradient so the
+  14px gutter stays visually quiet; the thumb's transparent border keeps
+  it narrow until hovered.
+*/
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, transparent 6px, #2a201d 6px, #2a201d 8px, transparent 8px);
+}
+::-webkit-scrollbar-track:horizontal {
+  background: linear-gradient(180deg, transparent 6px, #2a201d 6px, #2a201d 8px, transparent 8px);
+}
+::-webkit-scrollbar-thumb {
+  background-color: #4a3833;
+  border: 4px solid transparent;
+  background-clip: padding-box;
+  border-radius: 14px;
+  min-height: 48px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-claret);
+  border-width: 3px;
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--color-claret-strong);
+}
+::-webkit-scrollbar-corner,
+::-webkit-scrollbar-button {
+  background: transparent;
+  display: none;
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #4a3833 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes form-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes step-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes new-row-pulse {
+  0% {
+    background-color: color-mix(in srgb, var(--color-claret) 18%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-new-row {
+  animation: new-row-pulse 1.6s ease-out;
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-line) 30%,
+    color-mix(in srgb, var(--color-line) 50%, var(--color-surface)) 45%,
+    var(--color-line) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Staff shell (AdminShell) ambient motion - all neutralized by the
+   prefers-reduced-motion rule above. */
+@keyframes logo-ripple {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
+.logo-ripple::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 17px;
+  border: 1px solid var(--color-claret);
+  opacity: 0.4;
+  animation: logo-ripple 2.6s ease-out infinite;
+}
+
+@keyframes bell-ring {
+  0%,
+  88%,
+  100% {
+    transform: rotate(0);
+  }
+  90% {
+    transform: rotate(14deg);
+  }
+  92% {
+    transform: rotate(-12deg);
+  }
+  94% {
+    transform: rotate(8deg);
+  }
+  96% {
+    transform: rotate(-4deg);
+  }
+}
+
+.animate-bell-ring {
+  transform-origin: 50% 2px;
+  animation: bell-ring 6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-breathe {
+  animation: breathe 2s ease-in-out infinite;
+}
+
+/* =====================================================================
+   Floor plan (staff editor now, guest plan in stage 3)
+   Sizes are set inline in cqw relative to .fp-plan's width, so the plan
+   keeps real proportions at any window width and zoom.
+   ===================================================================== */
+.fp-plan {
+  position: relative;
+  container-type: inline-size;
+  min-width: 600px;
+  touch-action: none;
+  transition:
+    width 0.45s cubic-bezier(0.6, 0, 0.2, 1),
+    background-color 0.4s;
+}
+.fp-plan.fp-noseats .fp-arm {
+  display: none;
+}
+
+@keyframes fp-fadein {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fp-spawn-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+@keyframes fp-spawn-big {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes fp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes fp-shake {
+  20% {
+    margin-left: -8px;
+  }
+  40% {
+    margin-left: 8px;
+  }
+  60% {
+    margin-left: -5px;
+  }
+  80% {
+    margin-left: 3px;
+  }
+}
+@keyframes fp-seat-in {
+  from {
+    opacity: 0;
+    scale: 0.3;
+  }
+}
+@keyframes fp-sel-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+@keyframes fp-sway {
+  to {
+    filter: brightness(1.15);
+  }
+}
+
+/* Generic placed object (tables and hall objects alike). */
+.fp-obj {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition:
+    left 0.3s cubic-bezier(0.3, 1.5, 0.5, 1),
+    top 0.3s cubic-bezier(0.3, 1.5, 0.5, 1),
+    transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1),
+    width 0.35s,
+    height 0.35s;
+  z-index: 1;
+}
+.fp-obj .fp-dk {
+  animation: fp-spawn-in 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.fp-obj.fp-spawn .fp-dk {
+  animation: fp-spawn-big 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.fp-obj:hover .fp-dk {
+  filter: brightness(1.18);
+}
+.fp-obj.fp-drag {
+  transition:
+    left 0.1s ease-out,
+    top 0.1s ease-out,
+    transform 0.45s;
+  cursor: grabbing;
+  z-index: 9;
+}
+.fp-obj.fp-drag .fp-dk {
+  box-shadow: 0 18px 30px -12px #000;
+}
+.fp-obj:focus-visible {
+  outline: none;
+}
+.fp-obj:focus-visible .fp-dk {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 4px;
+}
+.fp-obj.fp-bad .fp-dk {
+  outline: 2px solid var(--color-status-cancelled);
+  outline-offset: 3px;
+  filter: saturate(0.4);
+}
+.fp-obj.fp-shake {
+  animation: fp-shake 0.45s;
+}
+.fp-obj.fp-static {
+  cursor: default;
+}
+.fp-label {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Hall object artwork, one modifier per kind. */
+.fp-dk {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+}
+.k-bar .fp-dk {
+  background: linear-gradient(#3a2a20, #2c1f18);
+  border: 1.5px solid #7a5a3a;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 3px #24180f;
+}
+.k-bar .fp-dk::after {
+  content: "";
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  top: 104%;
+  height: 46%;
+  background: radial-gradient(circle at 50% 55%, #4a3833 0 33%, transparent 35%) 0 0 / 16.66% 100% repeat-x;
+}
+.k-hostess .fp-dk {
+  background: #2e1c21;
+  border: 1.5px solid var(--color-claret);
+  border-radius: 12px 12px 4px 4px;
+}
+.k-hostess .fp-dk::after {
+  content: "";
+  position: absolute;
+  top: 16%;
+  right: 10%;
+  width: 14%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--color-claret);
+  box-shadow: 0 0 8px var(--color-claret);
+  animation: breathe 1.6s infinite;
+}
+.k-stairs .fp-dk {
+  background: repeating-linear-gradient(180deg, #2a201d 0 8%, #4a3833 8% 10%);
+  border: 1.5px solid #5a443d;
+  border-radius: 4px;
+}
+.k-stairs .fp-dk::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  width: 22%;
+  aspect-ratio: 1;
+  transform: translateX(-50%) rotate(45deg);
+  border-left: 2px solid #c9b6ae;
+  border-top: 2px solid #c9b6ae;
+}
+.k-entrance .fp-dk {
+  background: var(--color-status-confirmed);
+  border-radius: 3px;
+  box-shadow: 0 0 12px rgb(127 209 161 / 0.45);
+}
+.k-entrance .fp-dk::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  width: 50%;
+  aspect-ratio: 1;
+  border: 1.5px dashed var(--color-status-confirmed);
+  border-left: 0;
+  border-bottom: 0;
+  border-radius: 0 100% 0 0;
+  opacity: 0.6;
+}
+.k-door .fp-dk {
+  background: #a8958e;
+  border-radius: 2px;
+}
+.k-door .fp-dk::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1.5px dashed #a8958e;
+  border-left: 0;
+  border-bottom: 0;
+  border-radius: 0 100% 0 0;
+  opacity: 0.5;
+}
+.k-window .fp-dk {
+  background: #9cc7d6;
+  border-radius: 2px;
+  opacity: 0.8;
+  box-shadow: inset 0 0 0 2px #cfe6ee;
+}
+.k-rail .fp-dk {
+  border-top: 3px dashed #8f7c75;
+  border-radius: 0;
+}
+.k-wall .fp-dk {
+  background: #5a443d;
+  border-radius: 2px;
+}
+.k-column .fp-dk {
+  background: #3a2c28;
+  border: 1.5px solid #6f5d57;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 4px #2a201d;
+}
+.k-plant .fp-dk {
+  border-radius: 50%;
+  background: radial-gradient(circle, #4f8a62 0 22%, #2f5a40 24% 55%, #1e3326 57%);
+  border: 1px solid #2f4234;
+  animation: fp-sway 4s ease-in-out infinite alternate;
+}
+.k-kitchen .fp-dk {
+  background: repeating-linear-gradient(45deg, #1f1715 0 7px, #2a201d 7px 14px);
+  border: 1.5px solid #5a443d;
+  border-radius: 8px;
+}
+.k-wc .fp-dk {
+  background: #1b2226;
+  border: 1.5px solid #4a5a66;
+  border-radius: 8px;
+}
+.k-stage .fp-dk {
+  background-color: #2e1c21;
+  background-image: radial-gradient(rgb(236 143 163 / 0.28) 1px, transparent 1.6px);
+  background-size: 10px 10px;
+  border: 1.5px solid #6b3a48;
+  border-radius: 14px 14px 4px 4px;
+}
+.k-sofa .fp-dk {
+  background: #3b2229;
+  border: 1.5px solid #6b3a48;
+  border-radius: 12px;
+  box-shadow: inset 0 -9px 0 0 #4d2c36;
+}
+.k-wc {
+  color: #9cc7d6;
+}
+.k-entrance {
+  color: #13261a;
+}
+.k-kitchen,
+.k-stairs,
+.k-bar {
+  color: #e6d8d2;
+}
+.k-hostess,
+.k-stage {
+  color: var(--color-claret-strong);
+}
+
+/* Tables: top + chairs. */
+.fp-table {
+  z-index: 3;
+}
+.fp-top {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-status-pending);
+  background: #2a2114;
+  color: var(--color-status-pending);
+  letter-spacing: 0;
+  text-transform: none;
+  transition:
+    transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1),
+    box-shadow 0.3s,
+    border-radius 0.4s,
+    background 0.3s,
+    border-color 0.3s;
+  animation: fp-pop 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.fp-table.round .fp-top {
+  border-radius: 50%;
+}
+.fp-table.rectangle .fp-top,
+.fp-table.square .fp-top {
+  border-radius: 14px;
+}
+.fp-table:hover .fp-top {
+  transform: scale(1.05);
+  box-shadow: 0 14px 30px -12px #000;
+}
+.fp-table.fp-drag .fp-top {
+  transform: scale(1.08);
+  box-shadow:
+    0 26px 40px -14px #000,
+    0 0 0 6px rgb(227 181 94 / 0.15);
+}
+.fp-table.fp-spawn .fp-top {
+  animation: fp-spawn-big 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.fp-table.s-busy .fp-top {
+  border-color: var(--color-status-confirmed);
+  background: #1a2a20;
+  color: #a8dcbc;
+}
+.fp-table.s-off .fp-top {
+  border-color: #6f5d57;
+  color: #a8958e;
+  background: repeating-linear-gradient(45deg, #1d1513 0 6px, #262019 6px 12px);
+}
+.fp-table.s-hidden .fp-top {
+  border-style: dashed;
+  border-color: #6f5d57;
+  color: #a8958e;
+  background: #1a1412;
+}
+.fp-table.fp-bad .fp-top {
+  border-color: var(--color-status-cancelled) !important;
+  background: #2a1816 !important;
+  color: var(--color-status-cancelled) !important;
+}
+.fp-table:focus-visible .fp-top {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 6px;
+}
+.fp-txt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  transition: transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.fp-num {
+  font-family: var(--font-display), Georgia, serif;
+  line-height: 1;
+}
+.fp-cap {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  opacity: 0.85;
+}
+.fp-arm {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  z-index: 1;
+  transition: transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.fp-seat {
+  position: absolute;
+  border-radius: 6px 6px 3px 3px;
+  background: #3b2c28;
+  border: 1px solid #5a443d;
+  transition: transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+  animation: fp-seat-in 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.fp-table.s-busy .fp-seat {
+  background: #2a4434;
+  border-color: #3d6b4f;
+}
+.fp-table.s-off .fp-seat,
+.fp-table.s-hidden .fp-seat {
+  opacity: 0.35;
+}
+
+/* Editor overlays. */
+.fp-guide {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  background: var(--color-claret);
+  box-shadow: 0 0 10px var(--color-claret);
+  animation: fp-fadein 0.12s both;
+}
+.fp-guide.v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.fp-guide.h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+.fp-ghost {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed #5a443d;
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 0;
+  animation: fp-fadein 0.2s both;
+}
+.fp-ghost.round {
+  border-radius: 50%;
+}
+.fp-selbox {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed var(--color-claret);
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 7;
+  animation: fp-sel-in 0.3s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.fp-selbox i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--color-ink);
+  border: 2px solid var(--color-claret);
+}
+.fp-selbox i:nth-child(1) {
+  left: -5px;
+  top: -5px;
+}
+.fp-selbox i:nth-child(2) {
+  right: -5px;
+  top: -5px;
+}
+.fp-selbox i:nth-child(3) {
+  left: -5px;
+  bottom: -5px;
+}
+.fp-selbox i:nth-child(4) {
+  right: -5px;
+  bottom: -5px;
+}
+.fp-ruler {
+  position: absolute;
+  left: 1.6cqw;
+  bottom: 1.4cqw;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: #a8958e;
+  pointer-events: none;
+  z-index: 1;
+}
+.fp-ruler i {
+  display: block;
+  height: 7px;
+  border: 1.5px solid #a8958e;
+  border-top: 0;
+}
+
+/* Palette previews. */
+.fp-ptbl {
+  display: block;
+  border: 1.5px solid var(--color-status-pending);
+  background: #2a2114;
+  position: relative;
+}
+.fp-ptbl.round {
+  border-radius: 50%;
+}
+.fp-ptbl.rectangle,
+.fp-ptbl.square {
+  border-radius: 5px;
+}
+.fp-ptbl::before,
+.fp-ptbl::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 5px;
+  margin-left: -5px;
+  border-radius: 3px;
+  background: #5a443d;
+}
+.fp-ptbl::before {
+  top: -8px;
+}
+.fp-ptbl::after {
+  bottom: -8px;
+}
+.fp-pobj {
+  position: relative;
+  display: block;
+  font-size: 0;
+}
+
+/* =====================================================================
+   Guest booking plan - same geometry as the staff editor (lib/floorPlan),
+   read-only, with hover/selection feedback.
+   ===================================================================== */
+.gp-plan {
+  position: relative;
+  container-type: inline-size;
+  min-width: 560px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 22px;
+  overflow: hidden;
+  animation: fp-fadein 0.5s both;
+}
+.gp-plan .fp-obj {
+  pointer-events: none;
+}
+.gp-tbl {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 2;
+}
+.gp-tbl:hover,
+.gp-tbl:focus-visible {
+  z-index: 6;
+  outline: none;
+}
+.gp-in {
+  position: absolute;
+  inset: 0;
+  animation: gp-pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
+}
+@keyframes gp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.55) translateY(14px);
+  }
+}
+.gp-top {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #2a1f1c;
+  border: 1px solid #4a3833;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-ink);
+  transition:
+    background 0.35s,
+    border-color 0.35s,
+    transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1),
+    box-shadow 0.35s,
+    color 0.35s;
+}
+.gp-tbl.round .gp-top {
+  border-radius: 50%;
+}
+.gp-tbl.rectangle .gp-top,
+.gp-tbl.square .gp-top {
+  border-radius: 16px;
+}
+.gp-txt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.gp-num {
+  font-family: var(--font-display), Georgia, serif;
+  line-height: 1;
+}
+.gp-cap {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  color: var(--color-muted);
+  transition: color 0.35s;
+}
+.gp-tbl.free:hover .gp-top,
+.gp-tbl.free:focus-visible .gp-top {
+  transform: scale(1.06);
+  border-color: #8a6a62;
+  box-shadow: 0 16px 34px -12px rgb(0 0 0 / 0.8);
+}
+.gp-tbl:focus-visible .gp-top {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 5px;
+}
+.gp-tbl.sel .gp-top {
+  background: var(--color-claret);
+  border-color: var(--color-claret);
+  color: var(--color-on-accent);
+  transform: scale(1.08);
+  box-shadow:
+    0 0 0 6px rgb(236 143 163 / 0.16),
+    0 20px 44px -14px var(--color-claret);
+}
+.gp-tbl.sel .gp-cap {
+  color: #5a2333;
+}
+.gp-tbl.booked,
+.gp-tbl.small {
+  cursor: not-allowed;
+}
+.gp-tbl.booked .gp-top {
+  background: repeating-linear-gradient(45deg, #1d1513 0 6px, #231a18 6px 12px);
+  border-style: dashed;
+  color: #8f7c75;
+}
+.gp-tbl.booked .gp-cap {
+  color: #8f7c75;
+}
+.gp-tbl.small .gp-top {
+  opacity: 0.45;
+}
+.gp-dot {
+  position: absolute;
+  top: 18%;
+  right: 18%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-status-confirmed);
+  animation: gp-breathe 2.4s ease-in-out infinite;
+}
+.gp-tbl.rectangle .gp-dot {
+  top: 10px;
+  right: 10px;
+}
+.gp-tbl.sel .gp-dot,
+.gp-tbl.booked .gp-dot,
+.gp-tbl.small .gp-dot {
+  display: none;
+}
+@keyframes gp-breathe {
+  0% {
+    box-shadow: 0 0 0 0 rgb(127 209 161 / 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgb(127 209 161 / 0);
+    opacity: 0.6;
+  }
+}
+.gp-ring {
+  position: absolute;
+  inset: -12px;
+  border: 2px solid var(--color-claret);
+  opacity: 0;
+  pointer-events: none;
+}
+.gp-tbl.round .gp-ring {
+  border-radius: 50%;
+}
+.gp-tbl.rectangle .gp-ring,
+.gp-tbl.square .gp-ring {
+  border-radius: 24px;
+}
+.gp-tbl.sel .gp-ring {
+  animation: gp-ripple 1.9s ease-out infinite;
+}
+@keyframes gp-ripple {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+/* Chairs: --d is the resting distance from the table's centre, --push how
+   far they slide out on hover/selection (both set inline in cqw). */
+.gp-seat {
+  position: absolute;
+  border-radius: 7px 7px 4px 4px;
+  background: #3b2c28;
+  border: 1px solid #57423c;
+  transform: translateY(calc(var(--d) * -1));
+  transition:
+    transform 0.5s cubic-bezier(0.3, 1.5, 0.5, 1),
+    background 0.35s,
+    border-color 0.35s,
+    opacity 0.35s;
+}
+.gp-tbl.free:hover .gp-seat,
+.gp-tbl.free:focus-visible .gp-seat,
+.gp-tbl.sel .gp-seat {
+  transform: translateY(calc((var(--d) + var(--push)) * -1));
+}
+.gp-tbl.sel .gp-seat {
+  background: #b86a7c;
+  border-color: var(--color-claret);
+}
+.gp-tbl.booked .gp-seat {
+  opacity: 0.25;
+}
+.gp-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 20px);
+  transform: translate(-50%, 8px);
+  opacity: 0;
+  white-space: nowrap;
+  background: var(--color-ink);
+  color: #1d1614;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 11px;
+  border-radius: 9px;
+  pointer-events: none;
+  transition:
+    opacity 0.2s,
+    transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+  z-index: 10;
+}
+.gp-tip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: var(--color-ink);
+}
+.gp-tbl:hover .gp-tip,
+.gp-tbl:focus-visible .gp-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Guest page ambient glow and the shining primary button. */
+@keyframes gp-drift {
+  to {
+    transform: translate(-120px, 80px);
+  }
+}
+.gp-lamp {
+  position: absolute;
+  width: 760px;
+  height: 760px;
+  right: -260px;
+  top: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(236 143 163 / 0.09), rgb(236 143 163 / 0) 65%);
+  pointer-events: none;
+  animation: gp-drift 16s ease-in-out infinite alternate;
+}
+@keyframes gp-shine {
+  60%,
+  100% {
+    left: 120%;
+  }
+}
+.gp-shine:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  left: -80px;
+  background: rgb(255 255 255 / 0.35);
+  transform: skewX(-20deg);
+  animation: gp-shine 2.8s ease-in-out infinite;
+}
+@keyframes gp-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+.gp-underline {
+  position: relative;
+  white-space: nowrap;
+}
+.gp-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.04em;
+  height: 2px;
+  background: currentColor;
+  transform-origin: left;
+  animation: gp-draw 1s 0.5s cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+@keyframes gp-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+@keyframes gp-bump {
+  from {
+    transform: translateY(-8px) scale(0.8);
+    opacity: 0.3;
+  }
+}
+@keyframes gp-slide {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes gp-slot {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+}
+@keyframes gp-float {
+  to {
+    transform: translateY(-4px);
+  }
+}
+@keyframes gp-drop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -160%);
+  }
+}
+@keyframes gp-open {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes gp-line {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes gp-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+/* Empty-state table: each chair breathes out and back from its own side. */
+@keyframes gp-chair {
+  0%,
+  100% {
+    transform: rotate(var(--a)) translateY(-38px);
+  }
+  50% {
+    transform: rotate(var(--a)) translateY(-50px);
+  }
+}
+@keyframes gp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.92);
+  }
+}
+@keyframes gp-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes gp-fly {
+  0% {
+    transform: translateY(0) scale(0);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(-40px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-82px) scale(0.6) rotate(140deg);
+    opacity: 0;
+  }
+}
+
+/* ---- Guest auth: the table that sets itself as the form fills in ---- */
+@keyframes ga-chair-in {
+  from {
+    opacity: 0;
+    transform: translateY(-150px);
+  }
+}
+@keyframes ga-flicker {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(0.8) translate(1px, 0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.1) translate(-1px, 0);
+    opacity: 1;
+  }
+}
+@keyframes ga-envelope {
+  0% {
+    transform: translate(-40px, 30px) rotate(-14deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translate(6px, -6px) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes ga-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+.ga-scene {
+  position: relative;
+  width: 300px;
+  height: 300px;
+}
+.ga-arm {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+.ga-chair {
+  position: absolute;
+  left: -24px;
+  top: -14px;
+  width: 48px;
+  height: 28px;
+  border-radius: 15px 15px 8px 8px;
+  background: #3b2c28;
+  border: 1px solid #57423c;
+  transform: translateY(-92px);
+  transition:
+    transform 0.7s cubic-bezier(0.3, 1.5, 0.5, 1),
+    background-color 0.4s,
+    border-color 0.4s;
+  animation: ga-chair-in 0.8s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.ga-scene.out .ga-chair {
+  transform: translateY(-118px);
+}
+.ga-scene.done .ga-chair {
+  background: #b86a7c;
+  border-color: var(--color-claret);
+}
+.ga-top {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 156px;
+  height: 156px;
+  margin: -78px 0 0 -78px;
+  border-radius: 50%;
+  background: #2a1f1c;
+  border: 1px solid #4a3833;
+  box-shadow:
+    inset 0 0 0 12px #251b19,
+    0 30px 50px -20px #000;
+  transition: transform 0.6s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.ga-scene.done .ga-top {
+  transform: scale(1.04);
+}
+.ga-plate,
+.ga-glass,
+.ga-napkin {
+  position: absolute;
+  opacity: 0;
+  transition:
+    transform 0.55s cubic-bezier(0.3, 1.7, 0.5, 1),
+    opacity 0.3s;
+}
+.ga-plate {
+  left: -15px;
+  top: -15px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--color-ink);
+  box-shadow:
+    inset 0 0 0 5px #2a1f1c,
+    inset 0 0 0 6px var(--color-muted);
+  transform: translateY(-50px) scale(0);
+}
+.ga-plate.on {
+  transform: translateY(-50px) scale(1);
+  opacity: 1;
+}
+.ga-glass {
+  left: 12px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-claret);
+  transform: translateY(-58px) scale(0);
+}
+.ga-glass.on {
+  transform: translateY(-58px) scale(1);
+  opacity: 1;
+}
+.ga-napkin {
+  left: -6px;
+  top: -9px;
+  width: 12px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--color-claret);
+  transform: translate(-22px, -50px) rotate(-12deg) scale(0);
+}
+.ga-napkin.on {
+  transform: translate(-22px, -50px) rotate(-12deg) scale(1);
+  opacity: 1;
+}
+.ga-candle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 4px var(--color-line-strong);
+}
+.ga-flame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--color-status-pending);
+  box-shadow: 0 0 18px 8px rgb(227 181 94 / 0.35);
+  animation: ga-flicker 1.4s ease-in-out infinite alternate;
+}
+.ga-step i {
+  transition:
+    background-color 0.4s,
+    border-color 0.4s;
+}
+.ga-step svg {
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.3s,
+    transform 0.4s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+.ga-step.on svg {
+  opacity: 1;
+  transform: scale(1);
+}
+.ga-check circle {
+  stroke-dasharray: 210;
+  stroke-dashoffset: 210;
+  animation: gp-stroke 0.7s 0.1s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+}
+.ga-check path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: gp-stroke 0.45s 0.7s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+}
+
+/* ---- Staff login: the hall plan being scanned while the shift is closed ---- */
+@keyframes sl-scan {
+  to {
+    left: 100%;
+  }
+}
+@keyframes sl-lit {
+  0% {
+    border-color: var(--color-claret);
+    color: var(--color-ink);
+    box-shadow: 0 0 0 0.6cqw rgb(236 143 163 / 0.15);
+  }
+  18%,
+  100% {
+    border-color: var(--color-line-strong);
+    color: #8f7c75;
+    box-shadow: none;
+  }
+}
+@keyframes sl-lit-ok {
+  from {
+    scale: 0.7;
+  }
+}
+@keyframes sl-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+@keyframes sl-shake {
+  20% {
+    transform: translateX(-10px);
+  }
+  40% {
+    transform: translateX(9px);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+.sl-scan {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  left: -18%;
+  background: linear-gradient(90deg, rgb(236 143 163 / 0), rgb(236 143 163 / 0.14));
+  border-right: 2px solid var(--color-claret);
+  animation: sl-scan 4s linear infinite;
+  pointer-events: none;
+}
+.sl-table {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: max(8px, 1.5cqw);
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-surface-raised);
+  color: #8f7c75;
+  animation: sl-lit 4s linear infinite both;
+}
+.sl-ok .sl-table {
+  animation: sl-lit-ok 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  border-color: var(--color-status-confirmed);
+  color: #a8dcbc;
+  background: #18241c;
+}
+
+/* ---- Staff dashboard ---- */
+@keyframes db-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes db-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
