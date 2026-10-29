@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400" role="img" aria-label="TableFlow — бронирование столиков с живой схемой зала">
+  <defs>
+    <radialGradient id="glow" cx="78%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#6e2a3a" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#141010" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="scan" x1="0" x2="1">
+      <stop offset="0" stop-color="#ec8fa3" stop-opacity="0"/>
+      <stop offset="1" stop-color="#ec8fa3" stop-opacity=".35"/>
+    </linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#2a201d" stroke-width="1"/>
+    </pattern>
+    <clipPath id="plan"><rect x="720" y="70" width="500" height="260" rx="22"/></clipPath>
+    <style>
+      .t { font-family: Georgia, 'Times New Roman', serif; }
+      .s { font-family: 'Segoe UI', Helvetica, Arial, sans-serif; }
+      .m { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; letter-spacing: .28em; }
+      .tbl { fill: #18241c; stroke: #3d6b4f; stroke-width: 1.5; animation: lit 4s linear infinite; }
+      .busy { fill: #3a2c14; stroke: #d4a14a; animation: none; }
+      .line { animation: sweep 4s linear infinite; }
+      .dot { animation: blink 1.4s ease-in-out infinite; }
+      .rise { animation: rise .9s cubic-bezier(.2,.8,.2,1) both; }
+      @keyframes sweep { from { transform: translateX(0); } to { transform: translateX(500px); } }
+      @keyframes lit { 0%, 100% { fill: #18241c; } 50% { fill: #24402e; } }
+      @keyframes blink { 50% { opacity: .25; } }
+      @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    </style>
+  </defs>
+
+  <rect width="1280" height="400" fill="#141010"/>
+  <rect width="1280" height="400" fill="url(#glow)"/>
+
+  <g class="rise">
+    <g transform="translate(72 92)">
+      <rect width="148" height="30" rx="15" fill="none" stroke="#4a3833"/>
+      <circle class="dot" cx="18" cy="15" r="4" fill="#3f9b6a"/>
+      <text class="m" x="32" y="20" font-size="11" fill="#c9b6ae">ЗАЛ ОТКРЫТ</text>
+    </g>
+    <text class="t" x="70" y="200" font-size="84" fill="#f2e9e4">Table<tspan fill="#ec8fa3" font-style="italic">Flow</tspan></text>
+    <text class="s" x="74" y="248" font-size="22" fill="#c9b6ae">Бронирование столиков с живой схемой зала,</text>
+    <text class="s" x="74" y="278" font-size="22" fill="#c9b6ae">панелью персонала и Telegram-ботом с ИИ</text>
+    <text class="m" x="74" y="330" font-size="12" fill="#8f7c75">NEXT.JS 16 · SUPABASE · REALTIME · GROQ</text>
+  </g>
+
+  <g clip-path="url(#plan)">
+    <rect x="720" y="70" width="500" height="260" fill="#181210"/>
+    <rect x="720" y="70" width="500" height="260" fill="url(#grid)"/>
+    <rect x="860" y="290" width="220" height="26" rx="8" fill="#2c1f18" stroke="#7a5a3a" stroke-width="1.5"/>
+    <text class="m" x="944" y="307" font-size="10" fill="#c9a77a">БАР</text>
+    <rect x="1150" y="300" width="58" height="14" rx="4" fill="#3d6b4f"/>
+    <rect class="tbl" x="760" y="110" width="54" height="22" rx="6"/>
+    <rect class="tbl" x="760" y="150" width="54" height="22" rx="6" style="animation-delay:.2s"/>
+    <rect class="tbl" x="760" y="190" width="54" height="22" rx="6" style="animation-delay:.4s"/>
+    <circle class="tbl" cx="860" cy="135" r="14" style="animation-delay:.8s"/>
+    <circle class="tbl busy" cx="860" cy="185" r="14"/>
+    <rect class="tbl" x="920" y="96" width="30" height="30" rx="6" style="animation-delay:1.2s"/>
+    <rect class="tbl" x="920" y="214" width="30" height="30" rx="6" style="animation-delay:1.2s"/>
+    <circle class="tbl busy" cx="1000" cy="170" r="24"/>
+    <rect class="tbl" x="1050" y="96" width="30" height="30" rx="6" style="animation-delay:2.1s"/>
+    <rect class="tbl" x="1050" y="214" width="30" height="30" rx="6" style="animation-delay:2.1s"/>
+    <rect class="tbl" x="1120" y="110" width="54" height="22" rx="6" style="animation-delay:2.8s"/>
+    <rect class="tbl busy" x="1120" y="150" width="54" height="22" rx="6"/>
+    <rect class="tbl" x="1120" y="190" width="54" height="22" rx="6" style="animation-delay:3.2s"/>
+    <g class="line">
+      <rect x="640" y="70" width="80" height="260" fill="url(#scan)"/>
+      <rect x="719" y="70" width="2" height="260" fill="#ec8fa3"/>
+    </g>
+  </g>
+  <rect x="720" y="70" width="500" height="260" rx="22" fill="none" stroke="#2c2220"/>
+</svg>

@@ -1,333 +1,264 @@
-# TableFlow
+<div align="center">
 
-Сервис бронирования столиков в ресторане: визуальное бронирование для
-гостей и панель администратора для персонала — управление залами,
-столиками и бронями в реальном времени.
+<img src="docs/assets/banner.svg" alt="TableFlow — бронирование столиков с живой схемой зала, панелью персонала и Telegram-ботом с ИИ" width="100%" />
 
-Построен на Next.js (App Router, TypeScript) и Supabase (Postgres, Auth,
-Realtime, Row Level Security).
+<br />
+
+[![CI](https://github.com/madyokkaa/TableFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/madyokkaa/TableFlow/actions/workflows/ci.yml)
+![Next.js](https://img.shields.io/badge/Next.js-16-111?logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20·%20Auth%20·%20Realtime-3ecf8e?logo=supabase&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?logo=tailwindcss&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-deploy-000?logo=vercel&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram-бот%20с%20ИИ-2aabee?logo=telegram&logoColor=white)
+
+**[www.tableflow.asia](https://www.tableflow.asia)**
+
+</div>
+
+Гость выбирает стол прямо на схеме зала и бронирует без регистрации — на
+сайте или голосом в Telegram. Хостес видит новую бронь в панели в ту же
+секунду, подтверждает её одним нажатием, а гость получает ответ.
+Двойная бронь невозможна в принципе: это гарантирует база данных, а не
+код приложения.
 
 ## Возможности
 
-**Бронирование для гостя** (`/`)
-- Интерактивная визуальная схема зала — стол выбирается кликом по его
-  форме прямо на плане помещения
-- Компактный календарь и слайдер времени с дискретными шагами (уже
-  занятые слоты затемняются)
-- Единый сценарий стол → дата → время → подтверждение с анимированными
-  переходами между шагами
-- Вход без пароля — по magic-link на почту (Supabase Auth OTP)
-- Возможность бронировать анонимно, без создания аккаунта
+<table>
+<tr>
+<td width="50%" valign="top">
 
-**Панель персонала** (`/hostess`)
-- Вход по email + паролю, восстановление и сброс пароля
-- Управление залами и столиками, включая редактор схемы зала
-  drag-and-drop (форма, диапазон мест, ручной статус «занято» /
-  «не обслуживается»)
-- Список броней с фильтрами, полным редактированием (время, стол,
-  количество гостей, контакты, объединение нескольких столиков для
-  больших компаний) и сменой статуса (подтверждена / отменена /
-  неявка / завершена)
-- Живые обновления через Supabase Realtime (без polling) — новая бронь
-  появляется и подаёт звуковой сигнал без перезагрузки страницы
-- Управление доступом сотрудников: добавление новых администраторов
-  прямо из панели
-- Журнал действий (`/hostess/audit`): кто и когда менял брони, залы,
-  столы и доступ сотрудников. В журнал пишутся только идентификаторы и
-  названия изменённых полей — без имени, телефона и email гостя. Записи
-  неизменяемы (триггер запрещает `update`/`delete`/`truncate`), доступ
-  только через сервисный ключ
-- Двойное бронирование невозможно в принципе: ограничение Postgres
-  `EXCLUDE` на пересечение стола и временного диапазона отклоняет
-  конфликтующую запись на уровне базы данных, а не только в коде
-  приложения
+### 🍽️ Для гостя
 
-Весь интерфейс на русском языке; даты и время форматируются
-соответствующим образом.
+- Интерактивная схема зала: стол выбирается кликом по его форме, видно
+  бар, вход, окна и другие объекты зала
+- Календарь и слайдер времени — занятые слоты затемнены
+- Бронь **без аккаунта**; по желанию — вход по паролю или magic-link,
+  история броней и отмена
+- Обязательное согласие на обработку данных и страница
+  [`/privacy`](https://www.tableflow.asia/privacy) с формой удаления данных
+
+</td>
+<td width="50%" valign="top">
+
+### 🧑‍🍳 Для персонала
+
+- Список и сетка броней с фильтрами, подтверждение и отмена в один клик
+- Редактор схемы зала drag-and-drop в реальном масштабе
+- Дашборд: загрузка зала сейчас, динамика, часы пик, ближайшие брони
+- Живые обновления через Supabase Realtime и звук новой брони
+- Журнал действий: кто, когда и что изменил — «было → стало»
+- Управление сотрудниками и доступом
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🤖 Telegram-бот с ИИ
+
+- Гость пишет или говорит: «Ертең кешкі жетіге төрт адам, атым Айгерім»
+- ИИ (Groq) распознаёт речь и извлекает дату, время, гостей и имя на
+  казахском, русском и вперемешку
+- Бот уточняет недостающее, показывает сводку, берёт телефон из
+  контакта Telegram и создаёт бронь
+- Подтверждение, отмена, перенос и напоминание за час — в Telegram
+- Без ИИ работает базовое решение на правилах
+
+</td>
+<td width="50%" valign="top">
+
+### 🛡️ Надёжность и безопасность
+
+- `EXCLUDE`-ограничение Postgres: два гостя не займут один стол на одно
+  время; для этого есть нагрузочный тест на 1000 параллельных броней
+- Row Level Security на всех таблицах
+- Ограничение частоты запросов (IP хранится только как хэш)
+- Неизменяемый журнал действий без персональных данных
+- CI: lint, типы, тесты, сборка, `npm audit`, gitleaks
+
+</td>
+</tr>
+</table>
+
+## Скриншоты
+
+<table>
+<tr>
+<td colspan="2"><img src="docs/assets/screens/guest.png" alt="Бронирование для гостя: схема зала, выбор стола, даты и времени" /></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/screens/dashboard.png" alt="Дашборд персонала" /></td>
+<td width="50%"><img src="docs/assets/screens/bookings.png" alt="Список броней в панели персонала" /></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/screens/audit.png" alt="Журнал действий с подробностями" /></td>
+<td width="50%"><img src="docs/assets/screens/login.png" alt="Вход для персонала" /></td>
+</tr>
+</table>
+
+## Как это работает
+
+<img src="docs/assets/flow.svg" alt="Схема: гость бронирует на сайте или в Telegram, API проверяет данные и ищет стол, Postgres исключает двойную бронь, панель персонала обновляется сразу, гость получает подтверждение" width="100%" />
+
+ИИ в боте делает ровно два шага — распознаёт речь и извлекает поля из
+текста. Проверка дат и часов работы, поиск стола, создание брони и
+уведомления — обычный код. Модель никогда не пишет в базу и не считает
+доступность.
 
 ## Стек
 
-- **Next.js 16** (App Router) + **TypeScript**, **Tailwind CSS v4**
-- **Supabase**: Postgres, Auth (magic-link + email/пароль), Realtime
-  (Postgres Changes), Row Level Security
-- **Vitest** для интеграционных тестов (запускаются на реальном проекте
-  Supabase, без моков), **Playwright** для e2e
+| | |
+| --- | --- |
+| **Фронтенд** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Motion |
+| **Бэкенд** | Route Handlers Next.js, Supabase: Postgres, Auth, Realtime, RLS |
+| **ИИ** | Groq: `whisper-large-v3` (речь), `openai/gpt-oss-20b` (извлечение полей) |
+| **Тесты** | Vitest (unit и интеграционные на тестовом проекте Supabase), Playwright |
+| **Инфраструктура** | Vercel (+ Cron), GitHub Actions, Supabase `pg_cron` |
 
 ## Быстрый старт
 
-### 1. Проект Supabase
-
-Создайте проект на [supabase.com](https://supabase.com), затем скопируйте
-`.env.example` в `.env.local` и заполните:
+**1. Supabase.** Создайте проект на [supabase.com](https://supabase.com),
+скопируйте `.env.example` в `.env.local` и заполните:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=          # Project Settings -> API
-NEXT_PUBLIC_SUPABASE_ANON_KEY=     # Project Settings -> API
-SUPABASE_SERVICE_ROLE_KEY=         # Project Settings -> API (только сервер, обходит RLS)
-SUPABASE_DB_URL=                   # Project Settings -> Database -> Connection string -> Session pooler (порт 5432)
+NEXT_PUBLIC_SUPABASE_URL=          # Project Settings → API
+NEXT_PUBLIC_SUPABASE_ANON_KEY=     # Project Settings → API
+SUPABASE_SERVICE_ROLE_KEY=         # Project Settings → API (только сервер)
+SUPABASE_DB_URL=                   # Database → Connection string → Session pooler (5432)
 ```
 
-`SUPABASE_DB_URL` обязательно должен использовать **session pooler**
-(порт 5432) — transaction pooler (6543) не гарантирует поддержку DDL из
-миграций.
-
-### 2. Установка и миграции
+**2. Зависимости и миграции.**
 
 ```bash
 npm install
 npx supabase db push --db-url "$SUPABASE_DB_URL"
 ```
 
-Это применит все файлы из `supabase/migrations/` по порядку: схему
-(залы/столики/брони), ограничение на двойное бронирование, RPC-функции
-для атомарной записи в несколько столиков и настройку Realtime-публикации.
-
-### 3. Демо-данные (опционально)
+**3. Демо-данные** (необязательно) — два зала и столы:
 
 ```bash
 npx tsx scripts/seed.ts
 ```
 
-Создаёт два зала и несколько столиков, чтобы схема зала и доступность не
-были пустыми при первом запуске.
+**4. Сотрудник.** Создайте пользователя в Supabase (Authentication → Users
+→ Add user) и добавьте его в таблицу `staff`. Дальше новых сотрудников
+можно приглашать прямо из панели.
 
-### 4. Учётная запись сотрудника
-
-Аккаунты персонала не создаются самостоятельно — заведите один через
-дашборд Supabase (Authentication → Users → Add user, email + пароль) или
-через API `supabase.auth.admin.createUser`, а затем добавьте
-соответствующую запись в таблицу `staff`, чтобы `is_staff()` распознавал
-пользователя. Дальше новых администраторов можно добавлять прямо из
-панели персонала.
-
-### 5. Запуск
+**5. Запуск.**
 
 ```bash
-npm run dev       # http://localhost:3000
-npm run build     # production-сборка
-npm run test       # все тесты (часть - на тестовом проекте Supabase, см. «Тесты и CI»)
-npm run test:e2e   # e2e-тесты Playwright
-npm run lint
+npm run dev        # http://localhost:3000, панель — /hostess
 ```
+
+Telegram-бот подключается отдельно — пошагово в
+[docs/telegram-bot.md](docs/telegram-bot.md).
+
+<details>
+<summary><b>Переменные окружения</b></summary>
+
+<br />
+
+| Переменная | Назначение |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | доступ к Supabase |
+| `SUPABASE_DB_URL` | только локально, для миграций |
+| `NEXT_PUBLIC_SITE_URL` | адрес сайта: метаданные, ссылки из бота, вебхук |
+| `RESTAURANT_TIME_ZONE` | IANA-пояс ресторана, например `Asia/Almaty` |
+| `CRON_SECRET` | защита `/api/cron/cleanup` и `/api/cron/reminders` |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | Telegram-бот |
+| `GROQ_API_KEY`, `GROQ_STT_MODEL`, `GROQ_LLM_MODEL`, `GROQ_STT_PROMPT` | ИИ |
+| `AI_BOOKING_ENABLED` | `0` — аварийно выключить ИИ в боте |
+| `RESTAURANT_NAME` | название в приветствии бота |
+| `NEXT_PUBLIC_OPERATOR_NAME`, `NEXT_PUBLIC_PRIVACY_CONTACT` | страница `/privacy` |
+| `RATE_LIMIT_RESERVATIONS`, `RATE_LIMIT_AVAILABILITY`, `RATE_LIMIT_PRIVACY_ERASE`, `RATE_LIMIT_TELEGRAM_CHAT` | лимиты в формате `<запросов>/<секунд>` |
+
+</details>
 
 ## Тесты и CI
 
-### Какие тесты что проверяют
-
-| Файл | Нужен Supabase | Что проверяет |
-| --- | --- | --- |
-| `tests/auditUnit.test.ts` | нет | какие поля брони считаются изменёнными для журнала |
-| `tests/bookingSlots.test.ts` | нет | сетка слотов персонала, занятые слоты |
-| `tests/dashboardLive.test.ts` | нет | состояние столов на дашборде «сейчас» |
-| `tests/floorPlan.test.ts` | нет | геометрия схемы зала, валидация полей зала/объектов |
-| `tests/passwordStrength.test.ts` | нет | оценка надёжности пароля |
-| `tests/timeZone.test.ts` | нет | часовые пояса, «сегодня» для правил брони |
-| `tests/aiExtract.test.ts` | нет | ИИ-слой: запрос к Groq, валидация полей, переход на базовое решение, базовое решение на фразах kk/ru, таблица дат в поясе ресторана |
-| `tests/telegramBot.test.ts` | нет | диалог бота: согласие, сводка, контакт, уточнения, занятый стол, голос, лимит, отмена |
-| `tests/telegramWebhook.test.ts` | нет | вебхук: секрет, повторный `update_id` |
-| `tests/telegramNotify.test.ts` | нет | уведомления гостю при подтверждении/отмене/переносе |
-| `tests/telegramReminders.test.ts` | нет | напоминание за час: окно на границе суток, без повторов, 401 |
-| `tests/cronCleanup.test.ts` | нет | `/api/cron/cleanup`: проверка `CRON_SECRET`, вызов очистки |
-| `tests/rateLimitUnit.test.ts` | нет | ограничение частоты без базы: ключ без IP в открытом виде, 429, fail-open |
-| `tests/reservations.test.ts` | да | API залов/столов/броней: создание, подтверждение, отмена, двойная бронь, согласие на обработку ПД |
-| `tests/hallObjects.test.ts` | да | API схемы зала в реальном масштабе |
-| `tests/audit.test.ts` | да | журнал действий: запись при смене статуса, неизменяемость, `GET /api/audit` без токена — 401 |
-| `tests/privacyErase.test.ts` | да | удаление данных гостя: закрытая бронь обезличивается, активная будущая — нет, повтор безопасен, ответ одинаков, 429 |
-| `tests/concurrentBooking.test.ts` | да | `CONCURRENCY` (по умолчанию 1000) одновременных броней одного стола на одно время: ровно один `201`, остальные `409`, в базе одна активная бронь. Запускается только через `npm run test:concurrency` (или `RUN_CONCURRENCY=1`) |
-| `tests/telegramBooking.test.ts` | да | бронь из бота: `pending`, `source = telegram_ai`, отмена только из своего чата |
-| `tests/rateLimit.test.ts` | да | счётчик `rate_limit_hit`: лимит → 429, недоступен для anon-ключа |
-
-Тесты, которым нужен Supabase, запускаются **только против отдельного
-тестового проекта**, никогда против рабочей базы ресторана: они создают и
-удаляют залы, столы, брони и пользователей.
-
-Ограничение частоты запросов в тестах выключено (`RATE_LIMIT_DISABLED=1`
-в `vitest.setup.ts`); `tests/rateLimit.test.ts` включает его явно.
-
-### Локальный запуск
-
 ```bash
-npm run test:unit    # только тесты без базы
-npm test             # все тесты; нужен .env.local тестового проекта
 npm run lint
-npm run typecheck    # next typegen + tsc --noEmit
-npm run test:concurrency   # нагрузочный тест, только на тестовом проекте
+npm run typecheck          # next typegen + tsc --noEmit
+npm run test:unit          # тесты без базы
+npm test                   # все тесты — на ОТДЕЛЬНОМ тестовом проекте Supabase
+npm run test:concurrency   # 1000 параллельных броней, только на тестовом проекте
 ```
 
-Нагрузочный тест откажется запускаться, если `NEXT_PUBLIC_SUPABASE_URL`
-совпадает с `PRODUCTION_SUPABASE_URL` (задайте её в `.env.local`, чтобы
-защита работала). Число запросов — переменная `CONCURRENCY`.
+GitHub Actions (`.github/workflows/ci.yml`) на каждый pull request и push
+в `main`: **lint**, **unit**, **build**, **security** (`npm audit` и
+gitleaks) и информационный **integration** на тестовом проекте Supabase.
+Вручную запускаются нагрузочный тест (`concurrency.yml`) и замер качества
+ИИ (`eval-booking.yml`).
 
-Для `npm test` в `.env.local` должны быть ключи **тестового** проекта и
-учётная запись сотрудника в нём (`TEST_HOSTESS_EMAIL`,
-`TEST_HOSTESS_PASSWORD`), а миграции применены к нему:
+<details>
+<summary><b>Какие тесты что проверяют</b></summary>
 
-```bash
-npx supabase db push --db-url "$TEST_SUPABASE_DB_URL"
-```
+<br />
 
-### GitHub Actions
+| Файл | Supabase | Что проверяет |
+| --- | :---: | --- |
+| `bookingSlots`, `timeZone`, `floorPlan`, `passwordStrength`, `dashboardLive` | — | слоты, часовые пояса, геометрия зала, пароль, дашборд |
+| `aiExtract` | — | ИИ-слой: запрос к Groq, валидация, базовое решение на фразах kk/ru |
+| `telegramBot`, `telegramWebhook`, `telegramNotify`, `telegramReminders` | — | диалог бота, вебхук, уведомления, напоминания |
+| `rateLimitUnit`, `cronCleanup`, `auditUnit` | — | лимиты, плановая очистка, журнал |
+| `reservations`, `hallObjects` | ✓ | API залов, столов и броней, двойная бронь, согласие |
+| `audit`, `privacyErase`, `rateLimit`, `telegramBooking` | ✓ | журнал, удаление данных, лимиты, брони из бота |
+| `concurrentBooking` | ✓ | 1000 параллельных броней: ровно одна успешная |
 
-`.github/workflows/ci.yml` запускается на каждый pull request и push в
-`main`:
+Тесты с Supabase создают и удаляют данные, поэтому запускаются только на
+отдельном тестовом проекте. Секреты для CI — Settings → Secrets and
+variables → Actions: `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`,
+`TEST_SUPABASE_SERVICE_ROLE_KEY`, `TEST_SUPABASE_DB_URL`,
+`TEST_HOSTESS_EMAIL`, `TEST_HOSTESS_PASSWORD`, `GROQ_API_KEY`.
 
-- `lint` — ESLint и проверка типов (`npm run typecheck`);
-- `unit` — тесты без базы (`npm run test:unit`);
-- `build` — `npm run build`;
-- `security` — `npm audit --omit=dev --audit-level=high` и поиск секретов
-  в истории (gitleaks);
-- `integration` — применяет миграции к тестовому проекту и запускает все
-  тесты. Не блокирует слияние, не запускается для PR из форков и
-  пропускается, если секреты тестового проекта не заданы.
+</details>
 
-`.github/workflows/concurrency.yml` — нагрузочный тест, только вручную:
-Actions → Concurrency test → Run workflow, поле `concurrency` (по
-умолчанию 1000). Использует те же секреты тестового проекта.
+<details>
+<summary><b>Персональные данные, журнал и плановые задачи</b></summary>
 
-### Секреты
+<br />
 
-Settings → Secrets and variables → Actions → **Secrets**:
+- **Согласие.** Без отметки о согласии бронь не создаётся; момент
+  согласия хранится в `reservations.consent_at`.
+- **Удаление по запросу.** Форма на `/privacy` обезличивает закрытые и
+  прошедшие брони по email или телефону; будущие брони не трогает.
+- **Журнал действий** неизменяем (триггеры запрещают изменение и
+  удаление) и не хранит имён, телефонов и email гостей.
+- **Очистка** — `GET /api/cron/cleanup` раз в сутки (Vercel Cron):
+  закрывает прошедшие брони и удаляет закрытые старше срока хранения.
+- **Напоминания за час** — `GET /api/cron/reminders` каждые 10 минут
+  через Supabase `pg_cron` (`supabase/manual/schedule_reminders.sql`).
+- **Лимиты** — 10 броней и 60 запросов доступности в минуту с одного IP,
+  3 запроса на удаление данных в час; ответ `429` с `Retry-After`.
 
-| Секрет | Откуда |
-| --- | --- |
-| `TEST_SUPABASE_URL` | тестовый проект: Project Settings → API |
-| `TEST_SUPABASE_ANON_KEY` | тестовый проект: Project Settings → API |
-| `TEST_SUPABASE_SERVICE_ROLE_KEY` | тестовый проект: Project Settings → API |
-| `TEST_SUPABASE_DB_URL` | тестовый проект: Database → Connection string → Session pooler (5432) |
-| `TEST_HOSTESS_EMAIL`, `TEST_HOSTESS_PASSWORD` | сотрудник, заведённый в тестовом проекте (см. «Учётная запись сотрудника») |
-| `GITLEAKS_LICENSE` | только если репозиторий принадлежит организации (бесплатно на gitleaks.io) |
-
-Во вкладке **Variables** можно задать `PRODUCTION_SUPABASE_URL` — адрес
-рабочего проекта. Если тестовые секреты по ошибке указывают на него,
-интеграционные тесты откажутся запускаться.
-
-### Обязательные проверки для `main`
-
-Settings → Branches → Add branch protection rule → Branch name pattern
-`main` → **Require status checks to pass before merging** → отметьте
-`lint`, `unit`, `build`, `security` (они появятся в списке после первого
-прогона CI). `integration` не добавляйте: он информационный.
+</details>
 
 ## Структура проекта
 
 ```
 app/
-  page.tsx                 страница бронирования для гостя
-  account/                 вход/регистрация/сброс пароля для гостей
-  hostess/                 страницы панели персонала (вход, залы, брони, сотрудники)
-  api/                      Route Handlers (залы, столики, брони, доступность)
-  auth/callback/            обработчик редиректа magic-link
-components/
-  guest/                    сценарий бронирования (схема зала, календарь, слайдер, подтверждение)
-  hostess/                  админ-интерфейс (редактор схемы зала, формы, редактор броней)
-  Combobox.tsx, Modal.tsx, ConfirmDialog.tsx   общие UI-примитивы
+  page.tsx                 бронирование для гостя
+  account/                 аккаунт гостя: вход, регистрация, история
+  hostess/                 панель персонала: брони, залы, сотрудники, дашборд, журнал
+  privacy/                 персональные данные и удаление
+  api/                     Route Handlers: залы, столы, брони, доступность, журнал,
+                           Telegram-вебхук, cron
+components/                интерфейс гостя, панели и схемы зала
 lib/
-  supabase/                 клиенты Supabase (браузер/admin/auth)
-  scheduling.ts, reservations.ts, ru.ts        доменная логика и русская локализация
-hooks/
-  useReservationsRealtime.ts   подписка на Postgres Changes для живых обновлений
-supabase/migrations/         схема, RLS-политики, RPC-функции по порядку
-tests/                        интеграционные тесты Vitest
+  ai/                      Groq, промпт, валидация, базовое решение без ИИ
+  telegram/                диалог бота, тексты, уведомления, напоминания
+  supabase/                клиенты Supabase
+  scheduling.ts, availability.ts, reservations.ts   доменная логика
+supabase/migrations/       схема, RLS, RPC — по порядку
+tests/                     Vitest: unit и интеграционные
+evals/booking/             замер качества ИИ против базового решения
+docs/                      документация и картинки README
 ```
-
-## Telegram-бот бронирования с ИИ
-
-Гость может забронировать стол, написав или отправив голосовое боту в
-Telegram. ИИ (Groq) только распознаёт речь и извлекает из текста дату,
-время, число гостей и имя. Проверка, поиск стола и создание брони — код;
-бронь создаётся в статусе «Ожидает» с пометкой «Telegram» с иконкой Telegram в панели и
-расшифровкой для проверки. Подтверждение, отмена, перенос и напоминание
-за час приходят гостю в Telegram.
-
-Подключение, переменные окружения, ручная проверка, какие данные куда
-уходят и аварийное отключение (`AI_BOOKING_ENABLED=0`) —
-[docs/telegram-bot.md](docs/telegram-bot.md). Замер качества —
-[evals/booking/README.md](evals/booking/README.md).
-
-| Переменная | Назначение |
-| --- | --- |
-| `TELEGRAM_BOT_TOKEN` | токен бота от @BotFather |
-| `TELEGRAM_WEBHOOK_SECRET` | секрет заголовка `X-Telegram-Bot-Api-Secret-Token` (32+ символа) |
-| `GROQ_API_KEY` | ключ Groq |
-| `GROQ_STT_MODEL` | по умолчанию `whisper-large-v3` |
-| `GROQ_LLM_MODEL` | по умолчанию `openai/gpt-oss-20b` |
-| `AI_BOOKING_ENABLED` | `1` / `0` — аварийный выключатель ИИ |
-| `RESTAURANT_TIME_ZONE` | IANA-пояс ресторана |
-| `RESTAURANT_NAME` | название в приветствии бота (необязательно) |
-| `NEXT_PUBLIC_SITE_URL` | адрес сайта для ссылок из бота и вебхука |
-| `CRON_SECRET` | защита `/api/cron/cleanup` и `/api/cron/reminders` |
-
-## Персональные данные
-
-Форма брони (гостевая и форма новой брони в панели персонала) не
-отправляется без отметки о согласии на обработку персональных данных;
-`POST /api/reservations` без `consent_pd: true` отвечает `400`
-(`details.consent_pd`). Момент согласия сохраняется в
-`reservations.consent_at`.
-
-Страница `/privacy` описывает только то, что код действительно собирает и
-хранит. Данные, которых в коде нет, задаются переменными окружения:
-
-| Переменная | Что показывает | Если не задана |
-| --- | --- | --- |
-| `NEXT_PUBLIC_OPERATOR_NAME` | название оператора персональных данных | строка не выводится |
-| `NEXT_PUBLIC_PRIVACY_CONTACT` | контакт для обращений по персональным данным | предлагается обратиться в ресторан |
-
-Удаление данных по запросу гостя: форма «Удалить мои данные» на
-`/privacy` вызывает публичный `POST /api/privacy/erase` (`{ contact }` —
-email или телефон). SQL-функция `erase_guest_data` обезличивает только
-закрытые (`completed`, `cancelled`, `no-show`) и уже прошедшие брони с этим
-контактом: имя заменяется на «Удалено по запросу гостя», телефон, email и
-привязка к аккаунту стираются (`anonymized_at` фиксирует момент). Активные
-будущие брони не меняются — гость сначала отменяет их. Ответ одинаковый
-независимо от того, нашлось ли что-то; в журнал действий пишется только
-число обезличенных строк. Лимит — 3 запроса в час с одного IP.
-
-Срок хранения закрытых броней берётся из
-`STALE_RESERVATION_RETENTION_DAYS` (`lib/reservationCleanup.ts`).
-Тексты на странице не являются юридической консультацией — проверьте их с
-юристом перед запуском.
-
-## Плановая очистка
-
-`vercel.json` запускает `GET /api/cron/cleanup` раз в сутки (03:17 UTC).
-Маршрут закрывает брони, время которых прошло
-(`completeExpiredReservations`), удаляет закрытые брони старше
-`STALE_RESERVATION_RETENTION_DAYS` дней (`deleteStaleReservations`),
-чистит окна `rate_limits` старше суток и пишет в журнал число удалённых
-броней. Защищён заголовком `Authorization: Bearer $CRON_SECRET`: задайте
-`CRON_SECRET` в Vercel (Settings → Environment Variables) — Vercel Cron
-подставит его сам. Без переменной маршрут отклоняет все вызовы. Ручной
-запуск:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" https://<ваш-домен>/api/cron/cleanup
-```
-
-## Ограничение частоты запросов
-
-Публичные маршруты считают запросы с одного IP в фиксированном окне
-(таблица `rate_limits`, функция `rate_limit_hit`, доступ только у
-сервисного ключа). IP хранится только в виде HMAC-хэша и удаляется вместе
-со старыми окнами (не позже чем через сутки).
-
-| Маршрут | По умолчанию | Переменная |
-| --- | --- | --- |
-| `POST /api/reservations` | 10 за 60 с | `RATE_LIMIT_RESERVATIONS` |
-| `GET /api/availability` | 60 за 60 с | `RATE_LIMIT_AVAILABILITY` |
-| `POST /api/privacy/erase` | 3 за 3600 с | `RATE_LIMIT_PRIVACY_ERASE` |
-
-Формат переменной — `<запросов>/<секунд>`, например `20/60`. При
-превышении API отвечает `429` с заголовком `Retry-After`. Если база
-недоступна, запрос пропускается (fail-open), ошибка пишется в лог.
-Лимиты входа и magic-link настраиваются в самом проекте Supabase
-(Authentication → Rate Limits), а не в коде.
 
 ## Деплой
 
-Разверните Next.js-приложение на [Vercel](https://vercel.com) с теми же
-переменными окружения, что и в `.env.local` (кроме `SUPABASE_DB_URL` —
-она нужна только локально для миграций). В дашборде Supabase укажите в
-**Authentication → URL Configuration** ваш продакшн-домен, чтобы
-редиректы magic-link и сброса пароля вели на нужный сайт, а не на
-`localhost`.
+Проект разворачивается на [Vercel](https://vercel.com) с теми же
+переменными окружения, что и в `.env.local` (кроме `SUPABASE_DB_URL`).
+В Supabase → Authentication → URL Configuration укажите домен сайта,
+чтобы ссылки magic-link и сброса пароля вели на него.
