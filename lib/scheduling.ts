@@ -83,14 +83,14 @@ function wallClock(timeZone?: string, at = Date.now()) {
 /** Today's date in the restaurant's time zone (the device's, or `timeZone`
  * when given - the server passes the one the request reported), as
  * YYYY-MM-DD. */
-export function restaurantTodayIso(timeZone?: string): string {
-  const c = wallClock(timeZone);
+export function restaurantTodayIso(timeZone?: string, at: number = Date.now()): string {
+  const c = wallClock(timeZone, at);
   return `${c.year}-${String(c.month).padStart(2, "0")}-${String(c.day).padStart(2, "0")}`;
 }
 
 /** Minutes since midnight, restaurant local time. */
-export function restaurantNowMinutes(timeZone?: string): number {
-  const c = wallClock(timeZone);
+export function restaurantNowMinutes(timeZone?: string, at: number = Date.now()): number {
+  const c = wallClock(timeZone, at);
   return c.hour * 60 + c.minute;
 }
 
