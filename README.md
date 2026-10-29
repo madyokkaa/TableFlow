@@ -122,6 +122,11 @@ npm run lint
 | `tests/floorPlan.test.ts` | нет | геометрия схемы зала, валидация полей зала/объектов |
 | `tests/passwordStrength.test.ts` | нет | оценка надёжности пароля |
 | `tests/timeZone.test.ts` | нет | часовые пояса, «сегодня» для правил брони |
+| `tests/aiExtract.test.ts` | нет | ИИ-слой: запрос к Groq, валидация полей, переход на базовое решение, базовое решение на фразах kk/ru, таблица дат в поясе ресторана |
+| `tests/telegramBot.test.ts` | нет | диалог бота: согласие, сводка, контакт, уточнения, занятый стол, голос, лимит, отмена |
+| `tests/telegramWebhook.test.ts` | нет | вебхук: секрет, повторный `update_id` |
+| `tests/telegramNotify.test.ts` | нет | уведомления гостю при подтверждении/отмене/переносе |
+| `tests/telegramReminders.test.ts` | нет | напоминание за час: окно на границе суток, без повторов, 401 |
 | `tests/cronCleanup.test.ts` | нет | `/api/cron/cleanup`: проверка `CRON_SECRET`, вызов очистки |
 | `tests/rateLimitUnit.test.ts` | нет | ограничение частоты без базы: ключ без IP в открытом виде, 429, fail-open |
 | `tests/reservations.test.ts` | да | API залов/столов/броней: создание, подтверждение, отмена, двойная бронь, согласие на обработку ПД |
@@ -129,6 +134,7 @@ npm run lint
 | `tests/audit.test.ts` | да | журнал действий: запись при смене статуса, неизменяемость, `GET /api/audit` без токена — 401 |
 | `tests/privacyErase.test.ts` | да | удаление данных гостя: закрытая бронь обезличивается, активная будущая — нет, повтор безопасен, ответ одинаков, 429 |
 | `tests/concurrentBooking.test.ts` | да | `CONCURRENCY` (по умолчанию 1000) одновременных броней одного стола на одно время: ровно один `201`, остальные `409`, в базе одна активная бронь. Запускается только через `npm run test:concurrency` (или `RUN_CONCURRENCY=1`) |
+| `tests/telegramBooking.test.ts` | да | бронь из бота: `pending`, `source = telegram_ai`, отмена только из своего чата |
 | `tests/rateLimit.test.ts` | да | счётчик `rate_limit_hit`: лимит → 429, недоступен для anon-ключа |
 
 Тесты, которым нужен Supabase, запускаются **только против отдельного
@@ -223,6 +229,33 @@ hooks/
 supabase/migrations/         схема, RLS-политики, RPC-функции по порядку
 tests/                        интеграционные тесты Vitest
 ```
+
+## Telegram-бот бронирования с ИИ
+
+Гость может забронировать стол, написав или отправив голосовое боту в
+Telegram. ИИ (Groq) только распознаёт речь и извлекает из текста дату,
+время, число гостей и имя. Проверка, поиск стола и создание брони — код;
+бронь создаётся в статусе «Ожидает» с пометкой «🤖 Telegram» в панели и
+расшифровкой для проверки. Подтверждение, отмена, перенос и напоминание
+за час приходят гостю в Telegram.
+
+Подключение, переменные окружения, ручная проверка, какие данные куда
+уходят и аварийное отключение (`AI_BOOKING_ENABLED=0`) —
+[docs/telegram-bot.md](docs/telegram-bot.md). Замер качества —
+[evals/booking/README.md](evals/booking/README.md).
+
+| Переменная | Назначение |
+| --- | --- |
+| `TELEGRAM_BOT_TOKEN` | токен бота от @BotFather |
+| `TELEGRAM_WEBHOOK_SECRET` | секрет заголовка `X-Telegram-Bot-Api-Secret-Token` (32+ символа) |
+| `GROQ_API_KEY` | ключ Groq |
+| `GROQ_STT_MODEL` | по умолчанию `whisper-large-v3` |
+| `GROQ_LLM_MODEL` | по умолчанию `openai/gpt-oss-20b` |
+| `AI_BOOKING_ENABLED` | `1` / `0` — аварийный выключатель ИИ |
+| `RESTAURANT_TIME_ZONE` | IANA-пояс ресторана |
+| `RESTAURANT_NAME` | название в приветствии бота (необязательно) |
+| `NEXT_PUBLIC_SITE_URL` | адрес сайта для ссылок из бота и вебхука |
+| `CRON_SECRET` | защита `/api/cron/cleanup` и `/api/cron/reminders` |
 
 ## Персональные данные
 
