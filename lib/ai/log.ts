@@ -16,6 +16,8 @@ export type AiRequestLog = {
  * transcript. Returns the row id (to link it to the booking later) or null;
  * a logging failure never breaks the conversation. */
 export async function logAiRequest(entry: AiRequestLog): Promise<number | null> {
+  // Offline runs (evals) have no database configured - nothing to log to.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
   try {
     const { data, error } = await createAdminClient()
       .from("ai_requests")
