@@ -150,6 +150,15 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // A signed-in active staff member is entering a booking for a guest (the
+  // hostess drawer): it's theirs as created_by - which also marks it
+  // source = 'staff' in the database - not a booking for their own account.
+  let staffId: string | null = null;
+  if (user) {
+    const { data: staffRow } = await supabase.from("staff").select("active").eq("user_id", user.id).maybeSingle();
+    if (staffRow?.active) staffId = user.id;
+  }
+
   const { data: table, error: tableError } = await supabase
     .from("dining_tables")
     .select("id, max_capacity, is_active, manual_status")
@@ -173,12 +182,12 @@ export async function POST(request: NextRequest) {
     p_date: date as string,
     p_start_time: start_time as string,
     p_duration_minutes: DEFAULT_DURATION_MINUTES,
-    p_guest_user_id: user?.id ?? null,
+    p_guest_user_id: staffId ? null : (user?.id ?? null),
     p_guest_name: (guest_name as string).trim(),
     p_guest_phone: (guest_phone as string | undefined) ?? null,
     p_guest_email: (guest_email as string | undefined) ?? null,
     p_party_size: party_size as number,
-    p_created_by: null,
+    p_created_by: staffId,
     p_table_ids: [table_id],
   });
 
