@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" width="1280" height="360" role="img" aria-label="Как работает TableFlow: гость бронирует на сайте или в Telegram, бронь попадает в базу и сразу появляется в панели персонала">
+  <defs>
+    <style>
+      .t { font-family: Georgia, 'Times New Roman', serif; }
+      .s { font-family: 'Segoe UI', Helvetica, Arial, sans-serif; }
+      .m { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; letter-spacing: .18em; }
+      .box { fill: #1a1311; stroke: #3a2c28; stroke-width: 1.5; }
+      .hl { stroke: #ec8fa3; }
+      .wire { fill: none; stroke: #3a2c28; stroke-width: 2; stroke-dasharray: 6 6; animation: flow 1.2s linear infinite; }
+      .pulse { animation: pulse 2.4s ease-in-out infinite; }
+      @keyframes flow { to { stroke-dashoffset: -24; } }
+      @keyframes pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+    </style>
+  </defs>
+  <rect width="1280" height="360" fill="#141010"/>
+
+  <path id="w1" class="wire" d="M250 110 C 320 110, 330 180, 400 180"/>
+  <path id="w2" class="wire" d="M250 250 C 320 250, 330 180, 400 180"/>
+  <path id="w3" class="wire" d="M640 180 L 760 180"/>
+  <path id="w4" class="wire" d="M1000 180 L 1060 180" style="opacity:0"/>
+  <path id="w5" class="wire" d="M880 120 C 880 70, 980 70, 1040 110"/>
+  <path id="w6" class="wire" d="M880 240 C 880 290, 980 290, 1040 250"/>
+
+  <circle r="5" fill="#ec8fa3"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#w1"/></animateMotion></circle>
+  <circle r="5" fill="#2aabee" opacity="0"><set attributeName="opacity" to="1" begin="1.2s"/><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite"><mpath href="#w2"/></animateMotion></circle>
+  <circle r="5" fill="#ec8fa3"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#w3"/></animateMotion></circle>
+  <circle r="5" fill="#3f9b6a"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#w5"/></animateMotion></circle>
+  <circle r="5" fill="#d4a14a" opacity="0"><set attributeName="opacity" to="1" begin="1.2s"/><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite"><mpath href="#w6"/></animateMotion></circle>
+
+  <g transform="translate(40 70)">
+    <rect class="box" width="210" height="80" rx="16"/>
+    <text class="m" x="20" y="28" font-size="11" fill="#8f7c75">ГОСТЬ · САЙТ</text>
+    <text class="s" x="20" y="56" font-size="17" fill="#f2e9e4">Стол на схеме зала</text>
+  </g>
+  <g transform="translate(40 210)">
+    <rect class="box" width="210" height="80" rx="16"/>
+    <text class="m" x="20" y="28" font-size="11" fill="#8f7c75">ГОСТЬ · TELEGRAM</text>
+    <text class="s" x="20" y="56" font-size="17" fill="#f2e9e4">Голос или текст → ИИ</text>
+  </g>
+
+  <g transform="translate(400 120)">
+    <rect class="box hl" width="240" height="120" rx="18"/>
+    <text class="m" x="22" y="32" font-size="11" fill="#ec8fa3">API · NEXT.JS</text>
+    <text class="s" x="22" y="62" font-size="16" fill="#f2e9e4">Проверка дат и часов,</text>
+    <text class="s" x="22" y="86" font-size="16" fill="#f2e9e4">поиск свободного стола,</text>
+    <text class="s" x="22" y="110" font-size="16" fill="#c9b6ae">лимиты, журнал</text>
+  </g>
+
+  <g transform="translate(760 120)">
+    <rect class="box" width="240" height="120" rx="18"/>
+    <text class="m" x="22" y="32" font-size="11" fill="#8f7c75">SUPABASE · POSTGRES</text>
+    <text class="s" x="22" y="62" font-size="16" fill="#f2e9e4">EXCLUDE: двойная бронь</text>
+    <text class="s" x="22" y="86" font-size="16" fill="#f2e9e4">невозможна в базе</text>
+    <text class="s" x="22" y="110" font-size="16" fill="#c9b6ae">RLS · Realtime</text>
+  </g>
+
+  <g transform="translate(1040 70)">
+    <rect class="box" width="210" height="80" rx="16"/>
+    <circle class="pulse" cx="188" cy="22" r="5" fill="#3f9b6a"/>
+    <text class="m" x="20" y="28" font-size="11" fill="#8f7c75">ПАНЕЛЬ</text>
+    <text class="s" x="20" y="56" font-size="17" fill="#f2e9e4">Новая бронь — сразу</text>
+  </g>
+  <g transform="translate(1040 210)">
+    <rect class="box" width="210" height="80" rx="16"/>
+    <text class="m" x="20" y="28" font-size="11" fill="#8f7c75">ГОСТЮ</text>
+    <text class="s" x="20" y="56" font-size="16" fill="#f2e9e4">«Бронь подтверждена»</text>
+  </g>
+
+  <text class="t" x="640" y="330" font-size="18" fill="#8f7c75" text-anchor="middle" font-style="italic">ИИ только понимает речь и текст — решения принимает код</text>
+</svg>
