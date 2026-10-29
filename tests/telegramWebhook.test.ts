@@ -72,3 +72,14 @@ describe("POST /api/telegram", () => {
     expect((await post({ hello: 1 })).status).toBe(400);
   });
 });
+
+describe("GET /api/telegram", () => {
+  it("reports which settings are set without revealing them", async () => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "123:secret-token");
+    const { GET } = await import("../app/api/telegram/route");
+    const body = await (await GET()).json();
+    expect(body).toMatchObject({ webhook_secret_set: true, webhook_secret_length: 40, bot_token_set: true });
+    expect(JSON.stringify(body)).not.toContain(SECRET);
+    expect(JSON.stringify(body)).not.toContain("secret-token");
+  });
+});

@@ -20,6 +20,23 @@ function secretMatches(request: NextRequest): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
+// Setup check, safe to open in a browser: says which settings this
+// deployment can see - never their values, only whether they're set and
+// the webhook secret's length (to compare with the one given to Telegram).
+export async function GET() {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim() ?? "";
+  return NextResponse.json({
+    webhook_secret_set: secret.length > 0,
+    webhook_secret_length: secret.length,
+    bot_token_set: !!process.env.TELEGRAM_BOT_TOKEN?.trim(),
+    groq_key_set: !!process.env.GROQ_API_KEY?.trim(),
+    supabase_set: !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    ai_booking_enabled: process.env.AI_BOOKING_ENABLED?.trim() !== "0",
+    vercel_env: process.env.VERCEL_ENV ?? null,
+    commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+  });
+}
+
 // Telegram webhook. Answers fast and does the slow part (voice download,
 // Groq) after the response, so Telegram never times out and re-sends.
 export async function POST(request: NextRequest) {
