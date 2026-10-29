@@ -32,6 +32,8 @@ export const RATE_LIMITS = {
   reservationCreate: ruleFromEnv(process.env.RATE_LIMIT_RESERVATIONS, { limit: 10, windowSeconds: 60 }),
   availability: ruleFromEnv(process.env.RATE_LIMIT_AVAILABILITY, { limit: 60, windowSeconds: 60 }),
   privacyErase: ruleFromEnv(process.env.RATE_LIMIT_PRIVACY_ERASE, { limit: 3, windowSeconds: 3600 }),
+  // Incoming Telegram messages per chat - mostly to protect the Groq quota.
+  telegramChat: ruleFromEnv(process.env.RATE_LIMIT_TELEGRAM_CHAT, { limit: 20, windowSeconds: 600 }),
 } as const;
 
 /** The caller's address: the first entry of x-forwarded-for (set by
@@ -57,38 +59,39 @@ export function retryAfterSeconds(windowSeconds: number, nowMs: number = Date.no
   return Math.max(1, windowSeconds - (nowSeconds % windowSeconds));
 }
 
+/** One hit on an arbitrary counter key (already hashed - see rateLimitKey).
+ * true = within the limit, false = exceeded, null = the counter couldn't be
+ * reached (callers fail open). Shared by checkRateLimit (per IP) and the
+ * Telegram bot (per chat). */
+export async function hitRateLimit(key: string, { windowSeconds, limit }: RateLimitRule): Promise<boolean | null> {
+  try {
+    const { data, error } = await createAdminClient().rpc("rate_limit_hit", {
+      p_key: key,
+      p_window_seconds: windowSeconds,
+      p_limit: limit,
+    });
+    if (error) {
+      console.error("[rateLimit] rate_limit_hit failed", key.split(":")[0], error.code);
+      return null;
+    }
+    return data !== false;
+  } catch (err) {
+    console.error("[rateLimit] rate_limit_hit threw", key.split(":")[0], (err as Error)?.name);
+    return null;
+  }
+}
+
 /** Counts this request against `name`'s per-IP limit. Returns the 429
  * response to send when the limit is exceeded, or null to carry on. Fails
  * open: if the counter can't be reached the request goes through (and the
  * failure is logged) - an unavailable limiter must not take booking down
  * with it. RATE_LIMIT_DISABLED=1 turns it off (tests). */
-export async function checkRateLimit(
-  request: Request,
-  name: string,
-  { windowSeconds, limit }: RateLimitRule
-): Promise<NextResponse | null> {
+export async function checkRateLimit(request: Request, name: string, rule: RateLimitRule): Promise<NextResponse | null> {
   if (process.env.RATE_LIMIT_DISABLED === "1") return null;
-
-  let allowed: unknown;
-  try {
-    const { data, error } = await createAdminClient().rpc("rate_limit_hit", {
-      p_key: rateLimitKey(name, clientIp(request)),
-      p_window_seconds: windowSeconds,
-      p_limit: limit,
-    });
-    if (error) {
-      console.error("[rateLimit] rate_limit_hit failed, letting the request through", name, error);
-      return null;
-    }
-    allowed = data;
-  } catch (err) {
-    console.error("[rateLimit] rate_limit_hit threw, letting the request through", name, err);
-    return null;
-  }
-
+  const allowed = await hitRateLimit(rateLimitKey(name, clientIp(request)), rule);
   if (allowed !== false) return null;
   return NextResponse.json(
     { error: RATE_LIMIT_MESSAGE },
-    { status: 429, headers: { "Retry-After": String(retryAfterSeconds(windowSeconds)) } }
+    { status: 429, headers: { "Retry-After": String(retryAfterSeconds(rule.windowSeconds)) } }
   );
 }

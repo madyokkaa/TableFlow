@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:unit": "vitest run tests/aiExtract.test.ts tests/auditUnit.test.ts tests/bookingSlots.test.ts tests/cronCleanup.test.ts tests/dashboardLive.test.ts tests/floorPlan.test.ts tests/passwordStrength.test.ts tests/rateLimitUnit.test.ts tests/timeZone.test.ts",
+    "test:unit": "vitest run tests/aiExtract.test.ts tests/auditUnit.test.ts tests/bookingSlots.test.ts tests/cronCleanup.test.ts tests/dashboardLive.test.ts tests/floorPlan.test.ts tests/passwordStrength.test.ts tests/rateLimitUnit.test.ts tests/telegramBot.test.ts tests/telegramWebhook.test.ts tests/timeZone.test.ts",
     "test:concurrency": "vitest run tests/concurrentBooking.test.ts",
     "test:e2e": "playwright test"
   },
