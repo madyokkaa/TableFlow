@@ -197,12 +197,11 @@ export function BookingDrawer({
         return;
       }
 
-      // Deliberately a plain fetch, not apiFetch: with the staff session
-      // attached, the public create endpoint would link this booking to the
-      // staff member's own account as if they were the guest.
-      const res = await fetch("/api/reservations", {
+      // With the staff session attached the create endpoint records this as
+      // a staff booking (created_by, source = 'staff'), not as one for the
+      // staff member's own guest account.
+      const res = await apiFetch("/api/reservations", {
         method: "POST",
-        headers: { "content-type": "application/json" },
         body: JSON.stringify({
           table_id: tableIds[0],
           date,

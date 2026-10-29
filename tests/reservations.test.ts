@@ -399,6 +399,42 @@ describe("halls/tables/reservations API", () => {
     expect(Date.parse(reservation.consent_at)).toBeGreaterThanOrEqual(before - 5_000);
   });
 
+  it("marks where a booking came from: web for guests, staff for the hostess drawer", async () => {
+    const guestRes = await createReservation(
+      jsonRequest("/api/reservations", "POST", null, {
+        table_id: tableBId,
+        date: dateStr,
+        start_time: "12:30",
+        guest_name: "Web Guest",
+        guest_phone: "+10000000012",
+        party_size: 2,
+        consent_pd: true,
+      })
+    );
+    expect(guestRes.status).toBe(201);
+    const guest = await guestRes.json();
+    reservationIds.push(guest.id);
+    expect(guest.source).toBe("web");
+
+    const staffRes = await createReservation(
+      jsonRequest("/api/reservations", "POST", staffToken, {
+        table_id: tableBId,
+        date: dateStr,
+        start_time: "14:30",
+        guest_name: "Phone Guest",
+        guest_phone: "+10000000013",
+        party_size: 2,
+        consent_pd: true,
+      })
+    );
+    expect(staffRes.status).toBe(201);
+    const staffBooking = await staffRes.json();
+    reservationIds.push(staffBooking.id);
+    expect(staffBooking.source).toBe("staff");
+    expect(staffBooking.guest_user_id).toBeNull();
+    expect(staffBooking.created_by).not.toBeNull();
+  });
+
   it("rejects a booking date beyond the advance-booking window", async () => {
     const res = await createReservation(
       jsonRequest("/api/reservations", "POST", null, {
