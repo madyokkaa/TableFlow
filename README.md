@@ -122,6 +122,7 @@ npm run lint
 | `tests/floorPlan.test.ts` | нет | геометрия схемы зала, валидация полей зала/объектов |
 | `tests/passwordStrength.test.ts` | нет | оценка надёжности пароля |
 | `tests/timeZone.test.ts` | нет | часовые пояса, «сегодня» для правил брони |
+| `tests/cronCleanup.test.ts` | нет | `/api/cron/cleanup`: проверка `CRON_SECRET`, вызов очистки |
 | `tests/rateLimitUnit.test.ts` | нет | ограничение частоты без базы: ключ без IP в открытом виде, 429, fail-open |
 | `tests/reservations.test.ts` | да | API залов/столов/броней: создание, подтверждение, отмена, двойная бронь, согласие на обработку ПД |
 | `tests/hallObjects.test.ts` | да | API схемы зала в реальном масштабе |
@@ -243,6 +244,22 @@ email или телефон). SQL-функция `erase_guest_data` обезли
 `STALE_RESERVATION_RETENTION_DAYS` (`lib/reservationCleanup.ts`).
 Тексты на странице не являются юридической консультацией — проверьте их с
 юристом перед запуском.
+
+## Плановая очистка
+
+`vercel.json` запускает `GET /api/cron/cleanup` раз в сутки (03:17 UTC).
+Маршрут закрывает брони, время которых прошло
+(`completeExpiredReservations`), удаляет закрытые брони старше
+`STALE_RESERVATION_RETENTION_DAYS` дней (`deleteStaleReservations`),
+чистит окна `rate_limits` старше суток и пишет в журнал число удалённых
+броней. Защищён заголовком `Authorization: Bearer $CRON_SECRET`: задайте
+`CRON_SECRET` в Vercel (Settings → Environment Variables) — Vercel Cron
+подставит его сам. Без переменной маршрут отклоняет все вызовы. Ручной
+запуск:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://<ваш-домен>/api/cron/cleanup
+```
 
 ## Ограничение частоты запросов
 
