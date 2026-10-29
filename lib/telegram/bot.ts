@@ -214,13 +214,23 @@ async function onVoice(
     await deps.telegram.sendMessage(chatId, texts.voiceFailed(session.lang, deps.config.siteUrl));
     return session;
   }
-  return onText(transcription.text, session, deps, now, transcription.aiRequestId ? [transcription.aiRequestId] : []);
+  return onText(transcription.text, session, deps, now, transcription.aiRequestId ? [transcription.aiRequestId] : [], true);
 }
 
 /** Text (typed or transcribed) → fields → merged into the draft → either
  * a precise question, or the summary to confirm. */
-async function onText(text: string, session: Session, deps: BotDeps, now: Date, aiIds: number[]): Promise<Session | null> {
+async function onText(
+  text: string,
+  session: Session,
+  deps: BotDeps,
+  now: Date,
+  aiIds: number[],
+  fromVoice = false
+): Promise<Session | null> {
   const chatId = session.chatId;
+  // For a voice message, show what was heard - a recognition slip is then
+  // obvious to the guest before anything is booked.
+  const heard = fromVoice ? texts.heard(text) : "";
   const result = await deps.extract(text, now);
   const lang: Lang = result.lang ?? session.lang;
   const draft: Draft = {
@@ -258,7 +268,7 @@ async function onText(text: string, session: Session, deps: BotDeps, now: Date, 
   if (missing.length === 0 && problems.length === 0) {
     await deps.telegram.sendMessage(
       chatId,
-      texts.summary(lang, { date: draft.date!, time: draft.time!, partySize: draft.partySize!, name: draft.name!, wishes: draft.wishes ?? null }),
+      heard + texts.summary(lang, { date: draft.date!, time: draft.time!, partySize: draft.partySize!, name: draft.name!, wishes: draft.wishes ?? null }),
       confirmKeyboard()
     );
     return { ...session, lang, draft, state: "awaiting_confirm", clarifyRounds: 0 };
@@ -268,10 +278,10 @@ async function onText(text: string, session: Session, deps: BotDeps, now: Date, 
   if (rounds > MAX_CLARIFY_ROUNDS || nothingUnderstood) {
     // Either we keep missing, or the AI is down and the rules found nothing:
     // be honest and point to the website instead of looping.
-    await deps.telegram.sendMessage(chatId, texts.gaveUp(lang, deps.config.siteUrl), REMOVE_KEYBOARD);
+    await deps.telegram.sendMessage(chatId, heard + texts.gaveUp(lang, deps.config.siteUrl), REMOVE_KEYBOARD);
     return resetDialog({ ...session, lang });
   }
-  await deps.telegram.sendMessage(chatId, texts.question(lang, missing, problems));
+  await deps.telegram.sendMessage(chatId, heard + texts.question(lang, missing, problems));
   return { ...session, lang, draft, state: "clarifying", clarifyRounds: rounds };
 }
 

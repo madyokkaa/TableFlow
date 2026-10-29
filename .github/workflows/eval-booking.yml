@@ -12,7 +12,7 @@ on:
       prompt_version:
         description: "Prompt version (must match PROMPT_VERSION in lib/ai/prompts/extractBooking.ts)"
         required: true
-        default: "extract_booking_v1"
+        default: "extract_booking_v2"
 
 permissions:
   contents: read

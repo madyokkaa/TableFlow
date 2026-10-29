@@ -121,11 +121,66 @@ function lastMatch(text: string, pattern: RegExp): RegExpMatchArray | null {
   return all.length ? all[all.length - 1] : null;
 }
 
-function findTime(text: string): string | null {
+// Hours said in words - what speech recognition usually writes out.
+const HOURS_KK: [string, number][] = [
+  ["он бір", 11], ["он екі", 12], ["бір", 1], ["екі", 2], ["үш", 3], ["төрт", 4], ["бес", 5],
+  ["алты", 6], ["жеті", 7], ["сегіз", 8], ["тоғыз", 9], ["он", 10],
+];
+const HOURS_RU: [string, number][] = [
+  ["одиннадцать", 11], ["одиннадцати", 11], ["двенадцать", 12], ["двенадцати", 12], ["час", 1], ["часу", 1],
+  ["два", 2], ["двух", 2], ["три", 3], ["трёх", 3], ["трех", 3], ["четыре", 4], ["четырёх", 4], ["четырех", 4],
+  ["пять", 5], ["пяти", 5], ["шесть", 6], ["шести", 6], ["семь", 7], ["семи", 7], ["восемь", 8], ["восьми", 8],
+  ["девять", 9], ["девяти", 9], ["десять", 10], ["десяти", 10],
+];
+// "в половине восьмого" / "полвосьмого" = 7:30.
+const ORDINALS_RU: [string, number][] = [
+  ["первого", 1], ["второго", 2], ["третьего", 3], ["четвёртого", 4], ["четвертого", 4], ["пятого", 5], ["шестого", 6],
+  ["седьмого", 7], ["восьмого", 8], ["девятого", 9], ["десятого", 10], ["одиннадцатого", 11], ["двенадцатого", 12],
+];
+
+const alt = (pairs: [string, number][]) => pairs.map(([w]) => w).join("|");
+const lookup = (pairs: [string, number][], word: string) => pairs.find(([w]) => w === word.toLowerCase())?.[1];
+// The restaurant opens at noon, so a spoken 1..11 means afternoon/evening.
+const pm = (hour: number) => (hour < 12 ? hour + 12 : hour);
+
+/** Rewrites hours spoken in words as digits, only where they clearly mean a
+ * time, so the digit rules below can read them: "кешкі жетіге" → "кешкі 7ге",
+ * "жеті жарымда" → "7:30", "в семь вечера" → "в 7 вечера", "в половине
+ * восьмого" → "в 7:30". Party sizes ("төрт адам", "семь человек") are left
+ * alone. */
+export function spokenTimeToDigits(text: string): string {
+  let t = text;
+  // "в половине восьмого", "полвосьмого"
+  t = t.replace(re(`${B}(?:в\\s+)?(?:половине\\s+|пол)(${alt(ORDINALS_RU)})${E}`), (_m, w: string) => `в ${pm(lookup(ORDINALS_RU, w)! - 1 || 12)}:30`);
+  // Kazakh after a time word: "кешкі жеті", "сағат сегізде", "түскі екіде"
+  t = t.replace(re(`${B}(кешкі|түскі|таңғы|сағат)\\s+(${alt(HOURS_KK)})(\\p{L}*)`), (_m, ctx: string, w: string, suffix: string) =>
+    `${ctx} ${ctx.toLowerCase() === "таңғы" ? lookup(HOURS_KK, w) : pm(lookup(HOURS_KK, w)!)}${suffix}`
+  );
+  // Kazakh "<hour> жарым(да)" - half past
+  t = t.replace(re(`${B}(${alt(HOURS_KK)}|\\d{1,2})(?:-?\\p{L}{0,3})?\\s+жарым\\p{L}*`), (_m, w: string) => `${pm(lookup(HOURS_KK, w) ?? Number(w))}:30`);
+  // Kazakh hour with a dative/locative ending on its own ("жетіге келеміз");
+  // only 5-9: smaller numbers with these endings are usually party sizes or
+  // other words ("бірге" = together).
+  t = t.replace(re(`${B}(бес|алты|жеті|сегіз|тоғыз)(ге|ке|ға|қа|де|те|да|та)${E}`), (_m, w: string, suffix: string) => `${pm(lookup(HOURS_KK, w)!)}${suffix}`);
+  // Russian "в/к семь", "к семи", "на семь вечера" - not "на семь человек"
+  t = t.replace(
+    re(`${B}(в|к|около|на)\\s+(${alt(HOURS_RU)})${E}(?!\\s*(?:${PEOPLE}|двоих|троих))`),
+    (m: string, prep: string, w: string, offset: number, whole: string) => {
+      // "на семь" is a time only when followed by вечера/часов/дня.
+      const after = whole.slice(offset + m.length, offset + m.length + 12);
+      if (prep.toLowerCase() === "на" && !/вечер|час|дня/i.test(after)) return m;
+      return `${prep} ${pm(lookup(HOURS_RU, w)!)}`;
+    }
+  );
+  return t;
+}
+
+function findTime(raw: string): string | null {
+  const text = spokenTimeToDigits(raw);
   // "кешкі 7", "кешкі 7-ге", "7 вечера", "в 7 вечера" - evening.
   const evening =
     lastMatch(text, re(`${B}кешкі\\s*(\\d{1,2})(?:[:.](\\d{2}))?`)) ??
-    lastMatch(text, re(`(?<![\\d])(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:-?\\p{L}{0,3}\\s*)?вечер`));
+    lastMatch(text, re(`(?<![\\d])(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:-?\\p{L}{0,3}\\s*)?(?:час\\p{L}*\\s*)?вечер`));
   if (evening) {
     const h = Number(evening[1]);
     return hhmm(h < 12 ? h + 12 : h, Number(evening[2] ?? 0));
@@ -146,8 +201,8 @@ function findTime(text: string): string | null {
   // "сағат 7", "в 7", "7-ге" / "7-де" - a bare hour; the restaurant opens at
   // noon, so 1..11 reads as afternoon/evening.
   const bare =
-    lastMatch(text, re(`${B}(?:сағат|в)\\s+(\\d{1,2})${E}(?!\\s*(?:${PEOPLE}|числ|\\.|/))`)) ??
-    lastMatch(text, re(`(?<![\\d])(\\d{1,2})-?(?:ге|де|ке|те)${E}`));
+    lastMatch(text, re(`${B}(?:сағат|в|к|около)\\s+(\\d{1,2})(?!\\d)${E}(?!\\s*(?:${PEOPLE}|числ|\\.|/))`)) ??
+    lastMatch(text, re(`(?<![\\d])(\\d{1,2})-?(?:ге|де|ке|те|ға|да|қа|та)${E}`));
   if (bare) {
     const h = Number(bare[1]);
     return hhmm(h >= 1 && h < 12 ? h + 12 : h);
