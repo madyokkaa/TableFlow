@@ -51,7 +51,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const { data: current, error: currentError } = await supabase
     .from("reservations")
-    .select("id, status")
+    .select(
+      "id, status, date, start_time, duration_minutes, party_size, guest_name, guest_phone, guest_email, cancellation_reason, reservation_tables(table_id)"
+    )
     .eq("id", reservationId)
     .maybeSingle();
   if (currentError) {
@@ -192,7 +194,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const statusChanged = nextStatus !== undefined && nextStatus !== current.status;
-  const fields = changedFields(payload as Record<string, unknown>, EDITABLE_FIELDS);
+  const fields = changedFields(
+    payload as Record<string, unknown>,
+    { ...current, table_ids: current.reservation_tables.map((rt: { table_id: number }) => rt.table_id) },
+    EDITABLE_FIELDS
+  );
   await logAudit(supabase, {
     actor: staff.id,
     role: "staff",
