@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { hallPlanSize } from "@/lib/floorPlan";
+import { HALL_OBJECT_META, hallPlanSize, type HallObject } from "@/lib/floorPlan";
 import { getFloorData } from "@/lib/floorData";
 import { tableSize } from "@/lib/tableShapes";
-import { planUnits } from "@/components/floor-plan/PlanShapes";
+import { ObjectArtwork, objectFontSize, planUnits } from "@/components/floor-plan/PlanShapes";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
 import type { DashboardStats, LiveTableState } from "@/lib/dashboard/types";
@@ -44,6 +44,29 @@ function useHallGeometry() {
   return { halls, tables };
 }
 
+/** The hall's fixed objects (bar, entrance, walls…) for the mini plan, so
+ * it reads like the real room - fetched once per hall from the same public
+ * endpoint the guest plan uses. */
+function useHallObjects(hallId: number | null) {
+  const [byHall, setByHall] = useState<Map<number, HallObject[]>>(new Map());
+  useEffect(() => {
+    if (hallId === null || byHall.has(hallId)) return;
+    let cancelled = false;
+    fetch(`/api/halls/${hallId}/objects`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((objects: HallObject[]) => {
+        if (!cancelled) setByHall((current) => new Map(current).set(hallId, Array.isArray(objects) ? objects : []));
+      })
+      .catch(() => {
+        // Tables alone still make a usable plan.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hallId, byHall]);
+  return hallId === null ? [] : (byHall.get(hallId) ?? []);
+}
+
 /** "Залы сейчас": a live mini plan of one hall (pick another by clicking its
  * meter), free / busy / out-of-service totals and a load meter per hall. */
 export function LiveHallCard({ stats }: { stats: DashboardStats }) {
@@ -53,6 +76,7 @@ export function LiveHallCard({ stats }: { stats: DashboardStats }) {
   const hall = halls.find((h) => h.id === hallId) ?? null;
   const states = new Map((stats.liveTables ?? []).map((t) => [t.id, t.state]));
   const shown = hall ? tables.filter((t) => t.hall_id === hall.id && states.has(t.id)) : [];
+  const objects = useHallObjects(hall?.id ?? null);
   const room = hallPlanSize(hall ?? {});
   const unit = planUnits(room.w);
 
@@ -67,7 +91,7 @@ export function LiveHallCard({ stats }: { stats: DashboardStats }) {
         )
       }
     >
-      {hall && shown.length > 0 && (
+      {hall && (shown.length > 0 || objects.length > 0) && (
         <div
           role="img"
           aria-label={`${hall.name}: ${shown.filter((t) => states.get(t.id) === "busy").length} из ${shown.length} столов заняты`}
@@ -78,6 +102,24 @@ export function LiveHallCard({ stats }: { stats: DashboardStats }) {
             backgroundSize: `${(40 / room.w) * 100}% ${(40 / room.h) * 100}%`,
           }}
         >
+          {objects.map((o) => (
+            <span
+              key={`o${o.id}`}
+              aria-hidden="true"
+              title={o.label || HALL_OBJECT_META[o.kind]?.name}
+              className={`fp-obj fp-static pointer-events-none k-${o.kind}`}
+              style={{
+                left: `${(o.pos_x / room.w) * 100}%`,
+                top: `${(o.pos_y / room.h) * 100}%`,
+                width: unit(o.width),
+                height: unit(o.height),
+                transform: `translate(-50%, -50%) rotate(${o.rotation ?? 0}deg)`,
+                fontSize: objectFontSize(o.width, o.height, unit),
+              }}
+            >
+              <ObjectArtwork label={o.label} />
+            </span>
+          ))}
           {shown.map((t, i) => {
             const size = tableSize(t.shape, t.max_capacity);
             const state = states.get(t.id) ?? "free";
@@ -85,7 +127,7 @@ export function LiveHallCard({ stats }: { stats: DashboardStats }) {
               <span
                 key={t.id}
                 title={`Стол ${t.label} — ${STATE_LABELS[state]}`}
-                className={`absolute flex animate-[fp-fadein_.6s_both] items-center justify-center border font-mono ${STATE_CLASSES[state]}`}
+                className={`absolute z-[2] flex animate-[fp-fadein_.6s_both] items-center justify-center border font-mono ${STATE_CLASSES[state]}`}
                 style={{
                   left: `${(t.pos_x / room.w) * 100}%`,
                   top: `${(t.pos_y / room.h) * 100}%`,
