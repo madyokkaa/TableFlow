@@ -7,6 +7,7 @@ import { guestsLabel } from "@/lib/ru";
 import { timeToMinutes } from "@/lib/scheduling";
 import type { DiningTable } from "@/components/hostess/TableForm";
 import type { Reservation } from "./types";
+import { TelegramBadge } from "./TelegramBadge";
 
 const CHIP_SHAPE: Record<DiningTable["shape"], string> = {
   round: "h-[38px] w-[38px] rounded-full",
@@ -110,6 +111,7 @@ export function BookingRow({
         )}
       </div>
       <div className="col-span-full flex flex-wrap items-center justify-end gap-2 md:col-span-1">
+        {r.source === "telegram_ai" && <TelegramBadge />}
         <StatusPill status={r.status} />
         <AnimatePresence initial={false} mode="popLayout">
           {pending && (

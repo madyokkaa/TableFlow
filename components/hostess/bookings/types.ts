@@ -14,6 +14,9 @@ export type Reservation = {
   status: ReservationStatus;
   cancellation_reason: string | null;
   cancelled_by: "guest" | "host" | null;
+  /** Where it came from; absent on a database without the bot migration. */
+  source?: "web" | "staff" | "telegram_ai";
+  ai_transcript?: string | null;
   reservation_tables: { table_id: number; dining_tables: { id: number; label: string; hall_id: number; halls: { id: number; name: string } } }[];
 };
 

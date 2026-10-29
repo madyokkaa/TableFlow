@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/supabase/auth";
 import { changedFields, logAudit } from "@/lib/audit";
+import { notifyGuestOfStaffChange, supabaseNotifyDeps } from "@/lib/telegram/notify";
 import { ALLOWED_STATUS_TRANSITIONS, RESERVATION_STATUSES, STATUS_LABELS_RU, type ReservationStatus, mapRpcError } from "@/lib/reservations";
 
 // Field names (never values) go into the audit log.
@@ -220,6 +221,23 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (fetchError) {
     console.error("[reservations.update] fetch-after-update failed", fetchError);
     return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
+  }
+
+  // Bookings from the Telegram bot: tell the guest. Never fails the edit.
+  if (updated.telegram_chat_id) {
+    await notifyGuestOfStaffChange(
+      { status: current.status, date: current.date, start_time: current.start_time },
+      {
+        id: updated.id,
+        status: updated.status,
+        date: updated.date,
+        start_time: updated.start_time,
+        telegram_chat_id: updated.telegram_chat_id,
+        cancellation_reason: updated.cancellation_reason,
+        hallName: updated.reservation_tables?.[0]?.dining_tables?.halls?.name ?? null,
+      },
+      supabaseNotifyDeps(supabase)
+    );
   }
 
   return NextResponse.json(updated);

@@ -11,6 +11,7 @@ import { guestsLabel, pluralize } from "@/lib/ru";
 import { formatPhoneInput } from "@/lib/phone";
 import { isValidEmail } from "@/lib/validation";
 import { CAPTION, Field, INPUT, Segmented, Stepper } from "@/components/hostess/hall-editor/controls";
+import { AiTranscript, TelegramBadge } from "./TelegramBadge";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
 import type { DrawerTarget, Reservation } from "./types";
@@ -298,6 +299,15 @@ export function BookingDrawer({
                     Отклонить
                   </button>
                 )}
+              </div>
+            )}
+
+            {editing?.source === "telegram_ai" && (
+              <div className="flex flex-col gap-2">
+                <span className="self-start">
+                  <TelegramBadge />
+                </span>
+                {editing.ai_transcript && <AiTranscript transcript={editing.ai_transcript} />}
               </div>
             )}
 
