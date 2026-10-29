@@ -7,8 +7,9 @@ import { pluralize } from "@/lib/ru";
 import { EraseDataForm } from "@/components/guest/EraseDataForm";
 
 export const metadata: Metadata = {
-  title: "Персональные данные · TableFlow",
-  description: "Какие данные собирает форма бронирования и как их удалить.",
+  title: "Персональные данные",
+  description: "Какие данные собирает форма бронирования, кто их видит, сколько они хранятся и как их удалить.",
+  alternates: { canonical: "/privacy" },
 };
 
 // Everything below describes what this codebase actually collects and
