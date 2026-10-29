@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-17T00:00:00Z",
+  "title": "Design System: TableFlow",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Warm Paper", "canonical": "#f7f3ec", "tonalRamp": ["#17130f", "#221c16", "#342c24", "#756b5e", "#a79c8c", "#e3dacb", "#f3ece1", "#f7f3ec"] },
+      "surface": { "role": "neutral", "displayName": "Card Surface", "canonical": "#ffffff", "tonalRamp": ["#17130f", "#221c16", "#2c241c", "#5a4f42", "#b8ac9c", "#e3dacb", "#f3ede4", "#ffffff"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1c1712", "tonalRamp": ["#0d0a07", "#1c1712", "#2e2620", "#4a4034", "#756b5e", "#a79c8c", "#d9cfc0", "#f3ece1"] },
+      "muted": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#756b5e", "tonalRamp": ["#2e2620", "#4a4034", "#5f5548", "#756b5e", "#8c8172", "#a79c8c", "#c2b8aa", "#e3dacb"] },
+      "line": { "role": "neutral", "displayName": "Hairline", "canonical": "#e3dacb", "tonalRamp": ["#342c24", "#4a4034", "#5f5548", "#8c8172", "#c2b8aa", "#e3dacb", "#f0ebe2", "#f7f3ec"] },
+      "claret": { "role": "primary", "displayName": "Claret", "canonical": "#6e2a3a", "tonalRamp": ["#2c1017", "#3f1720", "#551f2c", "#6e2a3a", "#a2495a", "#d98a96", "#eaacb5", "#f3e4e6"] },
+      "claret-strong": { "role": "primary", "displayName": "Claret Strong (hover/press)", "canonical": "#551f2c", "tonalRamp": ["#20090e", "#331119", "#551f2c", "#7a3040", "#a2495a", "#d98a96", "#eaacb5", "#f3e4e6"] },
+      "gold": { "role": "secondary", "displayName": "Celebration Gold", "canonical": "#b8863a", "tonalRamp": ["#3a2f16", "#5c491f", "#96692a", "#b8863a", "#cfa15c", "#e0b872", "#f0cf98", "#f8ecd7"] },
+      "status-pending": { "role": "status", "displayName": "Pending Amber", "canonical": "#a6791f", "tonalRamp": ["#332912", "#5c4a1e", "#a6791f", "#c99a3c", "#d9a94a", "#e6c078", "#f0d9a8", "#f6ecd7"] },
+      "status-confirmed": { "role": "status", "displayName": "Confirmed Green", "canonical": "#3f6b52", "tonalRamp": ["#1c2a21", "#294a37", "#3f6b52", "#5c8a70", "#7fb494", "#a8ccb7", "#cde0d5", "#e3ede6"] },
+      "status-cancelled": { "role": "status", "displayName": "Cancelled Clay", "canonical": "#a14a3d", "tonalRamp": ["#33211d", "#5c342b", "#a14a3d", "#c26a5a", "#e2988c", "#ecb2a8", "#f2cec5", "#f5e5e2"] },
+      "status-noshow": { "role": "status", "displayName": "No-Show Grey", "canonical": "#6b7280", "tonalRamp": ["#242629", "#3a3d42", "#585d66", "#6b7280", "#8b909a", "#a9b0b8", "#cdd2d8", "#e9eaec"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display (Fraunces)", "purpose": "Page/section headings, modal titles, stat-card values." },
+      "body": { "displayName": "Body (IBM Plex Sans)", "purpose": "Running text, nav labels, form labels, button labels." },
+      "label": { "displayName": "Label/Mono (IBM Plex Mono)", "purpose": "Wordmarks, chip values, timestamps, compact field/section labels." }
+    },
+    "shadows": [
+      { "name": "soft", "value": "0 1px 2px rgb(28 23 18 / 0.06), 0 1px 1px rgb(28 23 18 / 0.04)", "purpose": "Resting cards, bars, hovered-but-unselected chips." },
+      { "name": "elevated", "value": "0 6px 16px -4px rgb(28 23 18 / 0.14), 0 2px 6px -2px rgb(28 23 18 / 0.08)", "purpose": "Selected chips, stat cards, lifted/active state." },
+      { "name": "floating", "value": "0 20px 48px -12px rgb(28 23 18 / 0.24), 0 8px 20px -8px rgb(28 23 18 / 0.14)", "purpose": "Modals and top-level overlays." }
+    ],
+    "motion": [
+      { "name": "press-spring", "value": "type: spring, stiffness: 400-420, damping: 17-20", "purpose": "System-wide hover (lift/scale-up) and tap (scale-down) on nearly every button/chip/icon across guest and admin surfaces." },
+      { "name": "ease-spring", "value": "cubic-bezier(0.34, 1.56, 0.64, 1)", "purpose": "CSS-level overshoot easing for tactile press/pop moments outside Motion's spring type." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Summary-bar booking CTA; claret fill, white text, spring hover/tap.",
+      "html": "<button class=\"ds-btn-primary\">Забронировать</button>",
+      "css": ".ds-btn-primary { background: #6e2a3a; color: #fff; height: 44px; padding: 0 20px; border-radius: 10px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 500; border: none; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:hover { background: #551f2c; transform: scale(1.03); } .ds-btn-primary:active { transform: scale(0.96); } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Table Chip (selected)",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Scaling table-row chip in its selected state - the signature guest-side selector.",
+      "html": "<button class=\"ds-chip ds-chip-selected\"><span class=\"ds-chip-label\">A3</span><span class=\"ds-chip-sub\">2–4 мест</span></button>",
+      "css": ".ds-chip { display: flex; flex: 1 1 52px; min-width: 52px; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 12px; border: 2px solid #e3dacb; background: #fff; padding: 8px 4px; text-align: center; transition: background-color 200ms, border-color 200ms, box-shadow 200ms, opacity 200ms; } .ds-chip-selected { border-color: #6e2a3a; background: #6e2a3a; color: #fff; box-shadow: 0 6px 16px -4px rgb(28 23 18 / 0.14), 0 2px 6px -2px rgb(28 23 18 / 0.08); } .ds-chip-label { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 500; } .ds-chip-sub { font-size: 9px; white-space: nowrap; opacity: 0.8; }"
+    },
+    {
+      "name": "Table Chip (default)",
+      "kind": "chip",
+      "refersTo": "chip-default",
+      "description": "Scaling table-row chip in its unselected, available state.",
+      "html": "<button class=\"ds-chip ds-chip-default\"><span class=\"ds-chip-label\">B1</span><span class=\"ds-chip-sub\">2–4 мест</span></button>",
+      "css": ".ds-chip { display: flex; flex: 1 1 52px; min-width: 52px; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 12px; border: 2px solid #e3dacb; background: #fff; color: #1c1712; padding: 8px 4px; text-align: center; transition: background-color 200ms, border-color 200ms, box-shadow 200ms, opacity 200ms; } .ds-chip-default:hover { border-color: #6e2a3a; box-shadow: 0 1px 2px rgb(28 23 18 / 0.06), 0 1px 1px rgb(28 23 18 / 0.04); } .ds-chip-label { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 500; } .ds-chip-sub { font-size: 9px; white-space: nowrap; opacity: 0.7; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Hostess dashboard metric card - display-face value, muted mono-ish label, ambient elevated shadow.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-label\">Забронировано сегодня</p><div class=\"ds-card-value\">24</div></div>",
+      "css": ".ds-card { border-radius: 16px; border: 1px solid #e3dacb; background: rgba(255,255,255,0.7); backdrop-filter: blur(16px); padding: 20px; box-shadow: 0 6px 16px -4px rgb(28 23 18 / 0.14), 0 2px 6px -2px rgb(28 23 18 / 0.08); transition: transform 200ms ease-out; } .ds-card:hover { transform: translateY(-2px); } .ds-card-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: #756b5e; } .ds-card-value { margin-top: 12px; font-family: Fraunces, Georgia, serif; font-size: 36px; color: #1c1712; }"
+    },
+    {
+      "name": "Admin Nav Item",
+      "kind": "nav",
+      "refersTo": "button-primary",
+      "description": "Sidebar/tab-bar nav link with lucide icon and active claret-tint state.",
+      "html": "<a class=\"ds-nav-item ds-nav-item-active\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\" rx=\"1\"/></svg><span>Дашборд</span></a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 12px; border-radius: 8px; padding: 10px 12px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; font-weight: 500; color: #756b5e; transition: background-color 150ms ease-out, color 150ms ease-out, transform 150ms ease-out; } .ds-nav-item:hover { background: rgba(227,218,203,0.5); color: #1c1712; } .ds-nav-item:active { transform: scale(0.97); } .ds-nav-item-active { background: #f3e4e6; color: #6e2a3a; }"
+    },
+    {
+      "name": "Modal",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Centered dialog with backdrop, floating shadow, spring-motion close button.",
+      "html": "<div class=\"ds-modal-backdrop\"><div class=\"ds-modal-panel\"><div class=\"ds-modal-head\"><h2 class=\"ds-modal-title\">Редактировать бронь</h2><button class=\"ds-modal-close\" aria-label=\"Закрыть\">✕</button></div></div></div>",
+      "css": ".ds-modal-backdrop { position: fixed; inset: 0; background: rgba(28,23,18,0.4); display: flex; align-items: center; justify-content: center; padding: 16px; } .ds-modal-panel { width: 100%; max-width: 512px; border-radius: 16px; border: 1px solid #e3dacb; background: #fff; padding: 24px; box-shadow: 0 20px 48px -12px rgb(28 23 18 / 0.24), 0 8px 20px -8px rgb(28 23 18 / 0.14); } .ds-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; } .ds-modal-title { font-family: Fraunces, Georgia, serif; font-size: 20px; color: #1c1712; } .ds-modal-close { display: flex; height: 36px; width: 36px; align-items: center; justify-content: center; border-radius: 8px; color: #756b5e; transition: background-color 150ms, transform 150ms; } .ds-modal-close:hover { background: #f7f3ec; color: #1c1712; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Reservation Book, Digitized",
+    "overview": "TableFlow reads as a well-run dining room's paper reservation book brought online: warm paper and ink rather than a generic SaaS blue/purple, one confident wine-red (claret) accent standing in for the pen the maître d' would use, and gold held back entirely for the moment a booking succeeds. The guest-facing booking screen expresses this as a spatial decision rather than a form: the whole floor plan is visible first, and every choice beneath it (table, time) reads as one continuous row that scales to the viewport instead of wrapping, scrolling, or paginating - refusing the category-default date-picker-then-dropdown wizard. The hostess admin panel inherits the same paper/ink system unchanged and adds a unified lucide-react icon set with a consistent, restrained hover/press motion (a small lift or scale, spring-eased) across every interactive control, replacing what had been hand-rolled SVGs and glyph icons.\n\nNo real restaurant branding, logo, or photography exists or is invented anywhere in the system - typography and color alone carry the identity (confirmed in PRODUCT.md's Brand Commitments).",
+    "keyCharacteristics": [
+      "Warm paper/ink base with a single wine-red accent; gold is rare and reserved for success states only",
+      "Fraunces (serif, display) paired with IBM Plex Sans (body) and IBM Plex Mono (operational/mono labels)",
+      "Scaling chip-rows, never wrapping or scrolling wizard/carousel patterns, are the signature guest-side interaction",
+      "Soft, ambient shadow vocabulary only - no hard offset/neobrutalist shadows anywhere in the build",
+      "Consistent spring-eased hover/press motion (lift on hover, scale-down on tap) on nearly every clickable element"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Claret is the only color carrying interactive/selection meaning (selected, primary action, active nav, link). No second \"brand\" hue is introduced anywhere in the build.", "section": "colors" },
+      { "name": "The Gold-Is-Rare Rule", "body": "Gold never appears in a button, chip, nav item, or form control. It appears only in the success-celebration confetti/ring and as one of the decorative background-blob/particle hues - never as a functional or selection color.", "section": "colors" },
+      { "name": "The Mono-For-Operational Rule", "body": "IBM Plex Mono is reserved for tabular/operational content (chip values, timestamps, wordmarks, tight field labels) - narrative body copy always uses Plex Sans.", "section": "typography" },
+      { "name": "The Ambient-Only Rule", "body": "Every shadow in the system is soft/diffuse and grows with elevation state (hover, selection, modal); none is a hard directional offset. A hard-offset \"sticker\" shadow would break this system and should not be introduced.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep claret as the only interactive/selection accent color; gold stays reserved for success-only moments.",
+      "Do use the spring whileHover/whileTap motion pattern (lift on hover, scale-down on tap) for new interactive controls, matching the existing stiffness/damping values.",
+      "Do use lucide-react for all icons; no hand-rolled SVG icons or unicode/emoji glyphs.",
+      "Do use the ambient soft/elevated/floating shadow scale; let shadow grow with elevation state rather than adding a new fixed shadow value.",
+      "Do let chip/row-based selectors scale to fill width before allowing wrap; wrap is a narrow-viewport fallback, not the default behavior."
+    ],
+    "donts": [
+      "Don't introduce a hard-offset/neobrutalist shadow anywhere in this system; every shadow here is diffuse.",
+      "Don't add a second brand accent color alongside claret; extend with tints of claret or use the existing status colors for operational meaning instead.",
+      "Don't use gold for anything interactive (buttons, chips, active nav, links) - it signals \"booking succeeded\" and nothing else.",
+      "Don't invent decorative uppercase \"kicker\" text above headlines; the uppercase mono labels that exist are compact field/section labels tied directly to the control beneath them, not headline ornamentation - do not generalize them into a headline-kicker pattern.",
+      "Don't reintroduce a scrolling/paginated/wrapping-by-default row for a bounded option set (tables, times) on the guest surface; scale-to-fit is the established mechanic there."
+    ]
+  }
+}
