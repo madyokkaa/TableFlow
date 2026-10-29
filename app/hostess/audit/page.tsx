@@ -38,6 +38,7 @@ const ACTION_LABELS: Record<string, string> = {
   "staff.deactivated": "Доступ сотрудника отключён",
   "staff.removed": "Сотрудник удалён",
   "staff.password_reset": "Ссылка для сброса пароля",
+  "guest_data.erased": "Удаление данных по запросу гостя",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
