@@ -1,0 +1,56 @@
+name: Eval booking extraction
+
+# Manual only - it spends Groq quota and needs the team's labelled set.
+# Never runs on pull_request.
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Groq model for extraction"
+        required: true
+        default: "openai/gpt-oss-20b"
+      prompt_version:
+        description: "Prompt version (must match PROMPT_VERSION in lib/ai/prompts/extractBooking.ts)"
+        required: true
+        default: "extract_booking_v1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-booking-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    name: eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      MODEL: ${{ inputs.model }}
+      PROMPT_VERSION: ${{ inputs.prompt_version }}
+    steps:
+      - name: Check inputs
+        run: |
+          if [ -z "$GROQ_API_KEY" ]; then echo "::error::GROQ_API_KEY secret is not set"; exit 1; fi
+          if ! [[ "$MODEL" =~ ^[A-Za-z0-9._/-]+$ ]]; then echo "::error::invalid model name"; exit 1; fi
+          if ! [[ "$PROMPT_VERSION" =~ ^[a-z0-9_]+$ ]]; then echo "::error::invalid prompt version"; exit 1; fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Run eval
+        run: npx tsx evals/booking/run.ts --model "$MODEL" --prompt-version "$PROMPT_VERSION"
+      - name: Summary
+        if: always()
+        run: cat evals/booking/results/*_summary.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No summary produced." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: eval-booking-${{ github.run_id }}
+          path: evals/booking/results/
+          if-no-files-found: ignore
+          retention-days: 30

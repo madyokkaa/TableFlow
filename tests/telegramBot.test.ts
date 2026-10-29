@@ -23,6 +23,7 @@ function extraction(fields: Partial<BookingFields>, extra: Partial<ExtractionRes
     errorCode: null,
     aiRequestId: 7,
     raw: { date: f.date, time: f.time, party_size: f.partySize, name: f.name, wishes: f.wishes, lang: "kk", unclear: [] },
+    usage: null,
     ...extra,
   };
 }

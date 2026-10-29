@@ -14,6 +14,8 @@ export type ExtractionResult = {
   errorCode: string | null;
   aiRequestId: number | null;
   raw: RawExtraction;
+  /** The model call's numbers (null when it wasn't made or failed). */
+  usage: { latencyMs: number; tokensIn: number | null; tokensOut: number | null } | null;
 };
 
 function hhmm(minutes: number): string {
@@ -33,13 +35,16 @@ export async function extractBooking(
   let raw: RawExtraction | null = null;
   let errorCode: string | null = null;
   let aiRequestId: number | null = null;
+  let usage: ExtractionResult["usage"] = null;
 
   if (useAi) {
+    const started = Date.now();
     try {
       const result = await chatJson(buildExtractMessages(text, { todayIso: clock.todayIso, nowTime: hhmm(clock.nowMinutes) }), {
         promptVersion: PROMPT_VERSION,
       });
       aiRequestId = result.aiRequestId;
+      usage = { latencyMs: Date.now() - started, tokensIn: result.tokensIn, tokensOut: result.tokensOut };
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(result.content);
@@ -59,5 +64,5 @@ export async function extractBooking(
   if (!raw) raw = baselineExtract(text, clock);
 
   const { fields, problems } = validateFields(raw, clock);
-  return { fields, problems, lang: raw.lang, unclear: raw.unclear, degraded, errorCode, aiRequestId, raw };
+  return { fields, problems, lang: raw.lang, unclear: raw.unclear, degraded, errorCode, aiRequestId, raw, usage };
 }

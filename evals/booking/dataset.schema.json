@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tableflow/evals/booking/dataset.schema.json",
+  "title": "Booking extraction eval example (one JSON object per line of dataset.jsonl)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "input", "now", "lang", "difficulty", "expected"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9_-]{1,64}$" },
+    "input": { "enum": ["text", "voice"] },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "input=text: the message as the guest typed it. input=voice: what was actually said (a human transcript) - lets the runner tell recognition errors from extraction errors."
+    },
+    "audio": { "type": "string", "pattern": "^audio/[a-z0-9_-]{1,64}\\.(ogg|oga|mp3|m4a|wav)$" },
+    "now": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$",
+      "description": "The restaurant's local date and time the message is sent at - fixes 'today' so the run is reproducible on any day."
+    },
+    "lang": { "enum": ["kk", "ru", "mixed"] },
+    "difficulty": { "enum": ["easy", "hard"] },
+    "notes": { "type": "string" },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "time", "party_size", "name", "wishes_present"],
+      "properties": {
+        "date": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "time": { "type": ["string", "null"], "pattern": "^\\d{2}:\\d{2}$" },
+        "party_size": { "type": ["integer", "null"], "minimum": 1, "maximum": 100 },
+        "name": { "type": ["string", "null"], "minLength": 1 },
+        "wishes_present": { "type": "boolean" }
+      }
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "input": { "const": "text" } } }, "then": { "required": ["text"] } },
+    { "if": { "properties": { "input": { "const": "voice" } } }, "then": { "required": ["audio"] } }
+  ]
+}
