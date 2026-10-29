@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { HALL_OBJECT_META, hallPlanSize, type HallObject } from "@/lib/floorPlan";
+import { hallPlanSize } from "@/lib/floorPlan";
 import { getFloorData } from "@/lib/floorData";
 import { tableSize } from "@/lib/tableShapes";
-import { ObjectArtwork, objectFontSize, planUnits } from "@/components/floor-plan/PlanShapes";
+import { planUnits } from "@/components/floor-plan/PlanShapes";
+import { HallObjectsLayer, useHallObjects } from "@/components/floor-plan/HallObjectsLayer";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
 import type { DashboardStats, LiveTableState } from "@/lib/dashboard/types";
@@ -44,29 +45,6 @@ function useHallGeometry() {
   return { halls, tables };
 }
 
-/** The hall's fixed objects (bar, entrance, walls…) for the mini plan, so
- * it reads like the real room - fetched once per hall from the same public
- * endpoint the guest plan uses. */
-function useHallObjects(hallId: number | null) {
-  const [byHall, setByHall] = useState<Map<number, HallObject[]>>(new Map());
-  useEffect(() => {
-    if (hallId === null || byHall.has(hallId)) return;
-    let cancelled = false;
-    fetch(`/api/halls/${hallId}/objects`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((objects: HallObject[]) => {
-        if (!cancelled) setByHall((current) => new Map(current).set(hallId, Array.isArray(objects) ? objects : []));
-      })
-      .catch(() => {
-        // Tables alone still make a usable plan.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [hallId, byHall]);
-  return hallId === null ? [] : (byHall.get(hallId) ?? []);
-}
-
 /** "Залы сейчас": a live mini plan of one hall (pick another by clicking its
  * meter), free / busy / out-of-service totals and a load meter per hall. */
 export function LiveHallCard({ stats }: { stats: DashboardStats }) {
@@ -102,24 +80,7 @@ export function LiveHallCard({ stats }: { stats: DashboardStats }) {
             backgroundSize: `${(40 / room.w) * 100}% ${(40 / room.h) * 100}%`,
           }}
         >
-          {objects.map((o) => (
-            <span
-              key={`o${o.id}`}
-              aria-hidden="true"
-              title={o.label || HALL_OBJECT_META[o.kind]?.name}
-              className={`fp-obj fp-static pointer-events-none k-${o.kind}`}
-              style={{
-                left: `${(o.pos_x / room.w) * 100}%`,
-                top: `${(o.pos_y / room.h) * 100}%`,
-                width: unit(o.width),
-                height: unit(o.height),
-                transform: `translate(-50%, -50%) rotate(${o.rotation ?? 0}deg)`,
-                fontSize: objectFontSize(o.width, o.height, unit),
-              }}
-            >
-              <ObjectArtwork label={o.label} />
-            </span>
-          ))}
+          <HallObjectsLayer objects={objects} room={room} unit={unit} />
           {shown.map((t, i) => {
             const size = tableSize(t.shape, t.max_capacity);
             const state = states.get(t.id) ?? "free";
