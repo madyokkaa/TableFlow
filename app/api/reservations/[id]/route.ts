@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireStaff } from "@/lib/supabase/auth";
+import { getAuthenticatedUser, isActiveStaff } from "@/lib/supabase/auth";
 import { changedFields, logAudit, valueChanges } from "@/lib/audit";
 import { notifyGuestOfStaffChange, supabaseNotifyDeps } from "@/lib/telegram/notify";
 import { ALLOWED_STATUS_TRANSITIONS, RESERVATION_STATUSES, STATUS_LABELS_RU, type ReservationStatus, mapRpcError } from "@/lib/reservations";
@@ -26,7 +26,9 @@ function todayIsoDate(): string {
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const staff = await requireStaff(request);
+  // Verified locally; the staff lookup itself runs alongside the booking
+  // lookup below, saving a round trip to the database.
+  const staff = await getAuthenticatedUser(request);
   if (!staff) {
     return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
@@ -53,13 +55,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const supabase = createAdminClient();
 
-  const { data: current, error: currentError } = await supabase
-    .from("reservations")
-    .select(
-      "id, status, date, start_time, duration_minutes, party_size, guest_name, guest_phone, guest_email, cancellation_reason, reservation_tables(table_id)"
-    )
-    .eq("id", reservationId)
-    .maybeSingle();
+  const [isStaff, { data: current, error: currentError }] = await Promise.all([
+    isActiveStaff(staff.id),
+    supabase
+      .from("reservations")
+      .select(
+        "id, status, date, start_time, duration_minutes, party_size, guest_name, guest_phone, guest_email, cancellation_reason, reservation_tables(table_id)"
+      )
+      .eq("id", reservationId)
+      .maybeSingle(),
+  ]);
+  if (!isStaff) {
+    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
+  }
   if (currentError) {
     console.error("[reservations.update] lookup failed", currentError);
     return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
@@ -185,40 +193,46 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json(mapped.body, { status: mapped.status });
   }
 
-  // Cancellation metadata isn't part of the RPC's state machine - a plain
-  // follow-up write, only when this call actually cancelled the booking.
-  if (nextStatus === "cancelled") {
-    const { error: reasonError } = await supabase
-      .from("reservations")
-      .update({ cancellation_reason: (cancellation_reason as string | undefined)?.trim() || null, cancelled_by: "host" })
-      .eq("id", reservationId);
-    if (reasonError) {
-      console.error("[reservations.update] saving cancellation reason failed", reasonError);
-    }
-  }
-
   const statusChanged = nextStatus !== undefined && nextStatus !== current.status;
   const before = { ...current, table_ids: current.reservation_tables.map((rt: { table_id: number }) => rt.table_id) };
   const fields = changedFields(payload as Record<string, unknown>, before, EDITABLE_FIELDS);
   const changes = valueChanges(payload as Record<string, unknown>, before, VALUE_FIELDS);
-  await logAudit(supabase, {
-    actor: staff.id,
-    role: "staff",
-    action: !statusChanged
-      ? "reservation.updated"
-      : nextStatus === "cancelled"
-        ? "reservation.cancelled"
-        : "reservation.status_changed",
-    entity: "reservation",
-    entityId: reservationId,
-    details: statusChanged ? { from: current.status, to: nextStatus, by: "host", fields, changes } : { fields, changes },
-  });
 
-  const { data: updated, error: fetchError } = await supabase
-    .from("reservations")
-    .select("*, reservation_tables(table_id, dining_tables(id, label, hall_id, halls(id, name)))")
-    .eq("id", reservationId)
-    .single();
+  // The journal entry and the read-back of the saved booking don't depend
+  // on each other - written and read at the same time.
+  const [, { data: updated, error: fetchError }] = await Promise.all([
+    logAudit(supabase, {
+      actor: staff.id,
+      role: "staff",
+      action: !statusChanged
+        ? "reservation.updated"
+        : nextStatus === "cancelled"
+          ? "reservation.cancelled"
+          : "reservation.status_changed",
+      entity: "reservation",
+      entityId: reservationId,
+      details: statusChanged ? { from: current.status, to: nextStatus, by: "host", fields, changes } : { fields, changes },
+    }),
+    (async () => {
+      // Cancellation metadata isn't part of the RPC's state machine - a
+      // plain follow-up write, only when this call actually cancelled the
+      // booking; it must land before the read-back.
+      if (nextStatus === "cancelled") {
+        const { error: reasonError } = await supabase
+          .from("reservations")
+          .update({ cancellation_reason: (cancellation_reason as string | undefined)?.trim() || null, cancelled_by: "host" })
+          .eq("id", reservationId);
+        if (reasonError) {
+          console.error("[reservations.update] saving cancellation reason failed", reasonError);
+        }
+      }
+      return supabase
+        .from("reservations")
+        .select("*, reservation_tables(table_id, dining_tables(id, label, hall_id, halls(id, name)))")
+        .eq("id", reservationId)
+        .single();
+    })(),
+  ]);
   if (fetchError) {
     console.error("[reservations.update] fetch-after-update failed", fetchError);
     return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });

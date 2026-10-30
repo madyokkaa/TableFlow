@@ -51,14 +51,37 @@ export async function getAuthenticatedUser(request: Request): Promise<Authentica
   }
 }
 
+// Active staff ids this instance has just confirmed, with when to look
+// again. Saves the `staff` lookup - a round trip to the database - on the
+// back-to-back requests a working hostess makes. Only "yes" is remembered;
+// removing someone clears it here at once and on other instances within
+// STAFF_CACHE_MS.
+const STAFF_CACHE_MS = 15_000;
+const confirmedStaff = new Map<string, number>();
+
+/** Forget a cached "is active staff" answer (after their access changed). */
+export function forgetStaff(userId: string): void {
+  confirmedStaff.delete(userId);
+}
+
+/** Whether `userId` has an active `staff` row (cached briefly, see above). */
+export async function isActiveStaff(userId: string): Promise<boolean> {
+  const until = confirmedStaff.get(userId);
+  if (until !== undefined && until > Date.now()) return true;
+
+  const admin = createAdminClient();
+  const { data } = await admin.from("staff").select("active").eq("user_id", userId).maybeSingle();
+  if (!data?.active) {
+    confirmedStaff.delete(userId);
+    return false;
+  }
+  confirmedStaff.set(userId, Date.now() + STAFF_CACHE_MS);
+  return true;
+}
+
 /** Same as getAuthenticatedUser, but additionally requires an active `staff` row. */
 export async function requireStaff(request: Request): Promise<AuthenticatedUser | null> {
   const user = await getAuthenticatedUser(request);
   if (!user) return null;
-
-  const admin = createAdminClient();
-  const { data } = await admin.from("staff").select("active").eq("user_id", user.id).maybeSingle();
-  if (!data?.active) return null;
-
-  return user;
+  return (await isActiveStaff(user.id)) ? user : null;
 }

@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendMessage = vi.fn();
 vi.mock("@/lib/telegram", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/telegram")>()), sendMessage }));
-vi.mock("@/lib/supabase/auth", () => ({ requireStaff: async () => ({ id: "staff-1", email: null }) }));
+vi.mock("@/lib/supabase/auth", () => ({
+  requireStaff: async () => ({ id: "staff-1", email: null }),
+  getAuthenticatedUser: async () => ({ id: "staff-1", email: null }),
+  isActiveStaff: async () => true,
+}));
 
 type Row = Record<string, unknown>;
 let current: Row;

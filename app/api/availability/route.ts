@@ -12,8 +12,9 @@ import {
 import { AvailabilityQueryError, loadDayAvailability, tableIsFree, type DayAvailability } from "@/lib/availability";
 
 export async function GET(request: NextRequest) {
-  const limited = await checkRateLimit(request, "availability", RATE_LIMITS.availability);
-  if (limited) return limited;
+  // Counted now, awaited together with the availability queries below - one
+  // round trip to the database instead of two in a row.
+  const limitCheck = checkRateLimit(request, "availability", RATE_LIMITS.availability);
 
   const { searchParams } = new URL(request.url);
   const dateStr = searchParams.get("date");
@@ -24,30 +25,32 @@ export async function GET(request: NextRequest) {
   if (tableIdStr) {
     tableId = Number(tableIdStr);
     if (!Number.isInteger(tableId) || tableId <= 0 || tableId > Number.MAX_SAFE_INTEGER) {
-      return NextResponse.json({ error: "table_id должен быть целым числом" }, { status: 400 });
+      return (await limitCheck) ?? NextResponse.json({ error: "table_id должен быть целым числом" }, { status: 400 });
     }
   }
 
   if (!dateStr) {
-    return NextResponse.json({ error: "укажите дату (ГГГГ-ММ-ДД)" }, { status: 400 });
+    return (await limitCheck) ?? NextResponse.json({ error: "укажите дату (ГГГГ-ММ-ДД)" }, { status: 400 });
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || Number.isNaN(Date.parse(dateStr))) {
-    return NextResponse.json({ error: "формат даты: ГГГГ-ММ-ДД" }, { status: 400 });
+    return (await limitCheck) ?? NextResponse.json({ error: "формат даты: ГГГГ-ММ-ДД" }, { status: 400 });
   }
 
   if (!partySizeStr) {
-    return NextResponse.json({ error: "укажите число гостей" }, { status: 400 });
+    return (await limitCheck) ?? NextResponse.json({ error: "укажите число гостей" }, { status: 400 });
   }
   const partySize = Number(partySizeStr);
   if (!Number.isInteger(partySize) || partySize < 1 || partySize > 100) {
-    return NextResponse.json({ error: "число гостей должно быть положительным целым (не более 100)" }, { status: 400 });
+    return (await limitCheck) ?? NextResponse.json({ error: "число гостей должно быть положительным целым (не более 100)" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
 
   let day: DayAvailability;
   try {
-    day = await loadDayAvailability(supabase, { date: dateStr, partySize, tableId });
+    const [limited, loaded] = await Promise.all([limitCheck, loadDayAvailability(supabase, { date: dateStr, partySize, tableId })]);
+    if (limited) return limited;
+    day = loaded;
   } catch (err) {
     if (!(err instanceof AvailabilityQueryError)) throw err;
     console.error(

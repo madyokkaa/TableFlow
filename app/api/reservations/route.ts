@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforcedDates } from "@/lib/requestTimeZone";
-import { getAuthenticatedUser, requireStaff } from "@/lib/supabase/auth";
+import { getAuthenticatedUser, isActiveStaff } from "@/lib/supabase/auth";
 import { RESERVATION_STATUSES, STATUS_LABELS_RU, mapRpcError } from "@/lib/reservations";
 import { DEFAULT_DURATION_MINUTES } from "@/lib/scheduling";
 import { completeExpiredReservations } from "@/lib/reservationCleanup";
@@ -9,8 +9,10 @@ import { RATE_LIMITS, checkRateLimit } from "@/lib/rateLimit";
 
 // Staff-only: list reservations with optional filters.
 export async function GET(request: NextRequest) {
-  const staff = await requireStaff(request);
-  if (!staff) {
+  // Only a verified sign-in gets this far (the token is checked locally);
+  // its staff lookup and the expiry pass below then share one round trip.
+  const user = await getAuthenticatedUser(request);
+  if (!user) {
     return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
@@ -38,12 +40,16 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  try {
-    await completeExpiredReservations(supabase);
-  } catch (cleanupError) {
-    console.error("[reservations.list] expiring past reservations failed", cleanupError);
-    // Non-fatal - the list below would just show a handful of stale
-    // pending/confirmed rows a beat longer than ideal, not worth a 500.
+  const [isStaff] = await Promise.all([
+    isActiveStaff(user.id),
+    completeExpiredReservations(supabase).catch((cleanupError) => {
+      console.error("[reservations.list] expiring past reservations failed", cleanupError);
+      // Non-fatal - the list below would just show a handful of stale
+      // pending/confirmed rows a beat longer than ideal, not worth a 500.
+    }),
+  ]);
+  if (!isStaff) {
+    return NextResponse.json({ error: "требуется авторизация" }, { status: 401 });
   }
 
   let query = supabase
@@ -87,8 +93,9 @@ export async function GET(request: NextRequest) {
 // since a stale client-side session is not something a guest here to book
 // a table should have to troubleshoot.
 export async function POST(request: NextRequest) {
-  const limited = await checkRateLimit(request, "reservations.create", RATE_LIMITS.reservationCreate);
-  if (limited) return limited;
+  // Counted right away, but awaited together with the lookups below - one
+  // round trip to the database instead of one before everything else.
+  const limitCheck = checkRateLimit(request, "reservations.create", RATE_LIMITS.reservationCreate);
 
   const user = await getAuthenticatedUser(request);
 
@@ -145,25 +152,26 @@ export async function POST(request: NextRequest) {
   const consentAt = new Date().toISOString();
 
   if (Object.keys(errors).length > 0) {
-    return NextResponse.json({ error: "validation_failed", details: errors }, { status: 400 });
+    return (await limitCheck) ?? NextResponse.json({ error: "validation_failed", details: errors }, { status: 400 });
   }
 
   const supabase = createAdminClient();
 
-  // A signed-in active staff member is entering a booking for a guest (the
+  // The limit, the caller's staff status and the table, all at once. A
+  // signed-in active staff member is entering a booking for a guest (the
   // hostess drawer): it's theirs as created_by - which also marks it
   // source = 'staff' in the database - not a booking for their own account.
-  let staffId: string | null = null;
-  if (user) {
-    const { data: staffRow } = await supabase.from("staff").select("active").eq("user_id", user.id).maybeSingle();
-    if (staffRow?.active) staffId = user.id;
-  }
-
-  const { data: table, error: tableError } = await supabase
-    .from("dining_tables")
-    .select("id, max_capacity, is_active, manual_status")
-    .eq("id", table_id as number)
-    .maybeSingle();
+  const [limited, isStaff, { data: table, error: tableError }] = await Promise.all([
+    limitCheck,
+    user ? isActiveStaff(user.id) : Promise.resolve(false),
+    supabase
+      .from("dining_tables")
+      .select("id, max_capacity, is_active, manual_status")
+      .eq("id", table_id as number)
+      .maybeSingle(),
+  ]);
+  if (limited) return limited;
+  const staffId = isStaff && user ? user.id : null;
   if (tableError) {
     console.error("[reservations.create] table lookup failed", tableError);
     return NextResponse.json({ error: "внутренняя ошибка сервера, попробуйте позже" }, { status: 500 });
@@ -200,13 +208,15 @@ export async function POST(request: NextRequest) {
   // failure here leaves a valid booking without its consent timestamp -
   // logged with the id so it can be backfilled, not turned into a failed
   // booking the guest would retry.
-  const { error: consentError } = await supabase
+  // The update returns the saved row, so it doubles as the fetch-after-create.
+  const { data: saved, error: consentError } = await supabase
     .from("reservations")
     .update({ consent_at: consentAt })
-    .eq("id", reservationId as number);
-  if (consentError) {
-    console.error("[reservations.create] saving consent_at failed", { reservationId }, consentError);
-  }
+    .eq("id", reservationId as number)
+    .select("*")
+    .single();
+  if (!consentError) return NextResponse.json(saved, { status: 201 });
+  console.error("[reservations.create] saving consent_at failed", { reservationId }, consentError);
 
   const { data: reservation, error: fetchError } = await supabase
     .from("reservations")

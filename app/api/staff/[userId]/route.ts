@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireStaff } from "@/lib/supabase/auth";
+import { forgetStaff, requireStaff } from "@/lib/supabase/auth";
 import { logAuditCritical } from "@/lib/audit";
 
 // Staff-only: change another staff member's email (their auth identity, not
@@ -74,6 +74,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     if (!removed) {
       return NextResponse.json({ error: "сотрудник не найден" }, { status: 404 });
     }
+    forgetStaff(userId);
     console.info("[staff.remove] removed", { actor: staff.id, target: userId });
     await logAuditCritical(admin, { actor: staff.id, role: "staff", action: "staff.removed", entity: "staff", entityId: userId });
     return new NextResponse(null, { status: 204 });
@@ -90,6 +91,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   if (!count) {
     return NextResponse.json({ error: "сотрудник не найден" }, { status: 404 });
   }
+  forgetStaff(userId);
   console.info("[staff.deactivate] deactivated", { actor: staff.id, target: userId });
   await logAuditCritical(admin, { actor: staff.id, role: "staff", action: "staff.deactivated", entity: "staff", entityId: userId });
   return new NextResponse(null, { status: 204 });
