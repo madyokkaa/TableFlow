@@ -37,7 +37,7 @@ export function BackgroundBlobs() {
       {BLOBS.map((blob, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full blur-3xl"
+          className="absolute rounded-full will-change-transform"
           style={{
             width: blob.size,
             height: blob.size,

@@ -98,6 +98,22 @@ body {
   color: var(--color-ink);
 }
 
+/* Taps on controls fire at once: no wait to see whether it's a double-tap
+   zoom (pinch-zoom still works). */
+a,
+button,
+input,
+select,
+textarea,
+label,
+[role="button"] {
+  touch-action: manipulation;
+}
+/* …except on the floor plan, where a touch drags the table. */
+.fp-plan * {
+  touch-action: none;
+}
+
 /*
   Brand scrollbar: a thin guide rail with a floating capsule thumb that
   turns rose on hover. The track is a 2px line drawn by a gradient so the
@@ -360,7 +376,7 @@ body {
 }
 @keyframes fp-sway {
   to {
-    filter: brightness(1.15);
+    opacity: 0.85;
   }
 }
 
@@ -397,11 +413,10 @@ body {
 .fp-obj:hover .fp-dk {
   filter: brightness(1.18);
 }
+/* No transition on left/top while dragging: the object sits under the
+   pointer on the same frame instead of easing after it. */
 .fp-obj.fp-drag {
-  transition:
-    left 0.1s ease-out,
-    top 0.1s ease-out,
-    transform 0.45s;
+  transition: transform 0.45s;
   cursor: grabbing;
   z-index: 9;
 }
@@ -942,7 +957,16 @@ body {
   height: 6px;
   border-radius: 50%;
   background: var(--color-status-confirmed);
-  animation: gp-breathe 2.4s ease-in-out infinite;
+}
+/* The pulse is a ring scaled on the compositor - animating box-shadow
+   repainted every free table's dot on every frame. */
+.gp-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgb(127 209 161 / 0.6);
+  animation: gp-breathe 2.4s ease-out infinite;
 }
 .gp-tbl.rectangle .gp-dot {
   top: 10px;
@@ -955,11 +979,13 @@ body {
 }
 @keyframes gp-breathe {
   0% {
-    box-shadow: 0 0 0 0 rgb(127 209 161 / 0.6);
+    transform: scale(1);
+    opacity: 1;
   }
-  50% {
-    box-shadow: 0 0 0 5px rgb(127 209 161 / 0);
-    opacity: 0.6;
+  50%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
   }
 }
 .gp-ring {
@@ -1066,10 +1092,12 @@ body {
   pointer-events: none;
   animation: gp-drift 16s ease-in-out infinite alternate;
 }
+/* Moved with transform, not `left`, so the endless sweep never triggers
+   layout. 1200% of its own 60px width carries it past any button. */
 @keyframes gp-shine {
   60%,
   100% {
-    left: 120%;
+    transform: translateX(1200%) skewX(-20deg);
   }
 }
 .gp-shine:not(:disabled)::before {

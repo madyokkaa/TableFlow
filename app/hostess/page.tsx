@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { CalendarRange, ChevronLeft, ChevronRight, List, Plus, Search } from "lucide-react";
 import { apiFetch, parseError } from "@/lib/api";
@@ -322,15 +322,25 @@ function ReservationsPageContent() {
     () => (reservations ?? []).map((r) => (overrides.has(r.id) ? { ...r, status: overrides.get(r.id) as ReservationStatus } : r)),
     [reservations, overrides]
   );
-  const inScope = shown.filter(
-    (r) => (hallFilter === "all" || r.reservation_tables.some((rt) => rt.dining_tables.hall_id === hallFilter)) && matchesQuery(r, query)
+  // The list filters on a deferred copy of the search text: the input
+  // updates on every keystroke, the (heavier) list re-render catches up
+  // when React has a moment, so typing never waits for it.
+  const deferredQuery = useDeferredValue(query);
+  const inScope = useMemo(
+    () =>
+      shown.filter(
+        (r) =>
+          (hallFilter === "all" || r.reservation_tables.some((rt) => rt.dining_tables.hall_id === hallFilter)) &&
+          matchesQuery(r, deferredQuery)
+      ),
+    [shown, hallFilter, deferredQuery]
   );
   const counts = new Map<string, number>([["all", inScope.length]]);
   for (const r of inScope) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
   const visible = inScope
     .filter((r) => statusFilter === "all" || r.status === statusFilter)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
-  const tablesById = new Map(tables.map((t) => [t.id, t]));
+  const tablesById = useMemo(() => new Map(tables.map((t) => [t.id, t])), [tables]);
   const gridTables = tables
     .filter((t) => t.is_active && (hallFilter === "all" || t.hall_id === hallFilter))
     .sort((a, b) => a.hall_id - b.hall_id || a.label.localeCompare(b.label, "ru", { numeric: true }));

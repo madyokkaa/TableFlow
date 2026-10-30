@@ -424,7 +424,7 @@ export function AdminShell({ children, wide = false }: { children: React.ReactNo
         </aside>
 
         <div className="relative flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-          <header className="sticky top-0 z-20 flex h-[72px] shrink-0 items-center gap-3.5 border-b border-line bg-paper/85 pl-4 pr-4 backdrop-blur-md md:pl-9 md:pr-8">
+          <header className="sticky top-0 z-20 flex h-[72px] shrink-0 items-center gap-3.5 border-b border-line bg-paper/95 pl-4 pr-4 md:pl-9 md:pr-8">
             <AnimatePresence mode="wait" initial={false}>
               <motion.h1
                 key={pageTitle}

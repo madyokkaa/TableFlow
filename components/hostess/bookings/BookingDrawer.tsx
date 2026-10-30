@@ -242,7 +242,7 @@ export function BookingDrawer({
   return (
     <>
       <motion.div
-        className="fixed inset-0 z-[60] bg-[rgb(10_7_6/0.55)] backdrop-blur-[3px]"
+        className="fixed inset-0 z-[60] bg-[rgb(10_7_6/0.66)]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

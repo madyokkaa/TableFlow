@@ -45,7 +45,7 @@ export function SuccessCelebration({
       role="dialog"
       aria-modal="true"
       aria-label="Заявка на бронь отправлена"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgb(10_7_6/0.74)] p-4 backdrop-blur-md animate-[fp-fadein_.3s_both]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgb(10_7_6/0.82)] p-4 animate-[fp-fadein_.3s_both]"
     >
       <div className="relative w-full max-w-[420px] animate-[gp-rise_.7s_cubic-bezier(.2,.9,.3,1.25)_both] rounded-[26px] bg-ink px-[30px] pb-7 pt-[34px] text-center text-[#1d1614]">
         <div className="relative mx-auto mb-3.5 h-[76px] w-[76px]">
