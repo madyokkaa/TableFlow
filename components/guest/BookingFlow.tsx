@@ -12,8 +12,15 @@ import { BookingPanel } from "./BookingPanel";
 import { ConfirmStep } from "./ConfirmStep";
 import { SuccessCelebration } from "./SuccessCelebration";
 import { Modal } from "@/components/Modal";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
+
+// Errors are kept as these markers (or the API's own text) and put into
+// words at render time, so they follow a language switch.
+const LOAD_FAILED = "__load_failed";
+const AVAILABILITY_FAILED = "__availability_failed";
+const NETWORK_FAILED = "__network_failed";
 
 type AvailabilitySlot = { table_id: number; start_time: string };
 
@@ -29,6 +36,17 @@ type Confirmed = {
 };
 
 export function BookingFlow({ session }: { session: Session | null }) {
+  const { t, serverError } = useI18n();
+  const errorText = (error: string | null) =>
+    error === null
+      ? null
+      : error === LOAD_FAILED
+        ? t.flow.loadPlanError
+        : error === AVAILABILITY_FAILED
+          ? t.flow.availabilityError
+          : error === NETWORK_FAILED
+            ? t.common.networkError
+            : serverError(error);
   const [partySize, setPartySize] = useState(2);
   const [date, setDate] = useState(restaurantTodayIso());
 
@@ -57,7 +75,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
     try {
       const [hallsRes, tablesRes] = await Promise.all([fetch("/api/halls"), fetch("/api/tables")]);
       if (!hallsRes.ok || !tablesRes.ok) {
-        setLoadError("Не удалось загрузить схему зала. Попробуйте обновить страницу.");
+        setLoadError(LOAD_FAILED);
         return;
       }
       const hallsData: Hall[] = await hallsRes.json();
@@ -65,7 +83,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
       setTables(await tablesRes.json());
       setActiveHallId((current) => current ?? hallsData[0]?.id ?? null);
     } catch {
-      setLoadError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
+      setLoadError(NETWORK_FAILED);
     } finally {
       setLoading(false);
     }
@@ -109,14 +127,14 @@ export function BookingFlow({ session }: { session: Session | null }) {
       const body = await res.json();
       if (!res.ok) {
         setAvailability([]);
-        setAvailabilityError(body.error ?? "Не удалось загрузить доступное время.");
+        setAvailabilityError(body.error ?? AVAILABILITY_FAILED);
         return;
       }
       setAvailability(body as AvailabilitySlot[]);
     } catch {
       if (requestId !== availabilityRequestId.current) return;
       setAvailability([]);
-      setAvailabilityError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
+      setAvailabilityError(NETWORK_FAILED);
     } finally {
       if (requestId === availabilityRequestId.current) setAvailabilityLoading(false);
     }
@@ -225,7 +243,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
       setConfirmOpen(false);
       loadAvailability();
     } catch {
-      setSubmitError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
+      setSubmitError(NETWORK_FAILED);
     } finally {
       setSubmitting(false);
     }
@@ -248,9 +266,9 @@ export function BookingFlow({ session }: { session: Session | null }) {
   if (loadError) {
     return (
       <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-8 text-center text-sm text-status-cancelled">
-        {loadError}{" "}
+        {errorText(loadError)}{" "}
         <button type="button" onClick={loadFloorPlan} className="underline underline-offset-4">
-          Повторить
+          {t.common.retry}
         </button>
       </p>
     );
@@ -259,7 +277,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
   return (
     <>
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <section className="flex min-w-0 flex-col gap-[18px]" aria-label="Схема зала">
+        <section className="flex min-w-0 flex-col gap-[18px]" aria-label={t.flow.planAria}>
           <GuestFloorPlan
             halls={halls}
             activeHallId={activeHallId}
@@ -298,14 +316,14 @@ export function BookingFlow({ session }: { session: Session | null }) {
           times={candidateTimes}
           availableTimes={timesForSelectedTable}
           availabilityLoading={availabilityLoading}
-          availabilityError={availabilityError}
+          availabilityError={errorText(availabilityError)}
           time={selectedTime}
           onTimeChange={handleSelectTime}
           onSubmit={() => setConfirmOpen(true)}
         />
       </div>
 
-      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Подтверждение брони">
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title={t.flow.confirmTitle}>
         {selectedTable && selectedTime && (
           <ConfirmStep
             table={selectedTable}
@@ -313,7 +331,7 @@ export function BookingFlow({ session }: { session: Session | null }) {
             time={selectedTime}
             partySize={partySize}
             submitting={submitting}
-            error={submitError}
+            error={errorText(submitError)}
             onSubmit={handleConfirm}
             defaultName={(session?.user.user_metadata?.full_name as string | undefined) ?? ""}
             defaultPhone={(session?.user.user_metadata?.phone as string | undefined) ?? ""}

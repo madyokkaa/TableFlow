@@ -1,6 +1,7 @@
 "use client";
 
 import type { DiningTable } from "@/components/hostess/TableForm";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { capacityText, guestTableState } from "./GuestFloorPlan";
 
 /** "Или выберите из списка": the same tables as the plan, as compact chips -
@@ -19,26 +20,27 @@ export function TableRow({
   availableTableIds: Set<number> | null;
   onSelectTable: (table: DiningTable) => void;
 }) {
+  const { t, f } = useI18n();
   if (tables.length === 0) return null;
+  const seatWord = (n: number) => f.plural(n, t.common.seats);
+  const stateWord = { booked: t.plan.stateBooked, small: t.plan.stateSmall, sel: t.plan.stateSelected, free: t.plan.stateFree };
   const sorted = [...tables].sort((a, b) => a.label.localeCompare(b.label, "ru", { numeric: true }));
 
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Или выберите из списка</span>
+      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted">{t.plan.orPick}</span>
       <div className="flex flex-wrap gap-2">
         {sorted.map((table) => {
           const state = guestTableState(table, partySize, selectedTableId, availableTableIds);
           const disabled = state === "booked" || state === "small";
-          const cap = capacityText(table);
+          const cap = capacityText(table, seatWord);
           return (
             <button
               key={table.id}
               type="button"
               aria-pressed={state === "sel"}
               aria-disabled={disabled}
-              aria-label={`Стол ${table.label}, ${cap}${
-                state === "booked" ? ", занят" : state === "small" ? ", мало мест" : state === "sel" ? ", выбран" : ", свободен"
-              }`}
+              aria-label={`${t.common.table(table.label)}, ${cap}, ${stateWord[state]}`}
               onClick={() => {
                 if (!disabled) onSelectTable(table);
               }}

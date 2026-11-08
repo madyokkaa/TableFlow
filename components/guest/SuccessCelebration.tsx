@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { formatTime, guestsLabel } from "@/lib/ru";
-import { shortDayLabel } from "./BookingPanel";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 const BURST_COLORS = ["bg-claret", "bg-status-pending", "bg-status-confirmed"];
 
@@ -29,6 +28,7 @@ export function SuccessCelebration({
   registerHref: string | null;
   onClose: () => void;
 }) {
+  const { t, f, guests } = useI18n();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export function SuccessCelebration({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Заявка на бронь отправлена"
+      aria-label={t.success.aria}
       className="fixed inset-0 z-50 flex items-center justify-center bg-[rgb(10_7_6/0.82)] p-4 animate-[fp-fadein_.3s_both]"
     >
       <div className="relative w-full max-w-[420px] animate-[gp-rise_.7s_cubic-bezier(.2,.9,.3,1.25)_both] rounded-[26px] bg-ink px-[30px] pb-7 pt-[34px] text-center text-[#1d1614]">
@@ -82,9 +82,9 @@ export function SuccessCelebration({
           </span>
         </div>
 
-        <h2 className="font-display text-[30px] font-normal leading-[1.1]">Заявка принята</h2>
+        <h2 className="font-display text-[30px] font-normal leading-[1.1]">{t.success.title}</h2>
         <p className="mt-1.5 text-sm text-[#6b5852]">
-          Мы ждём вас. Как только ресторан подтвердит бронь, она отметится в «Мои брони».
+          {t.success.text}
         </p>
 
         <div
@@ -94,10 +94,10 @@ export function SuccessCelebration({
 
         <dl className="text-sm">
           {[
-            ["Стол", `№ ${tableLabel} · ${hallName.toLowerCase()}`],
-            ["Дата", shortDayLabel(date)],
-            ["Время", formatTime(time)],
-            ["Гостей", guestsLabel(partySize)],
+            [t.success.table, t.success.tableNo(tableLabel, hallName.toLowerCase())],
+            [t.success.date, f.dayShort(date)],
+            [t.success.time, f.time(time)],
+            [t.success.guests, guests(partySize)],
           ].map(([label, value]) => (
             <div key={label} className="flex justify-between py-1.5">
               <dt className="text-[#6b5852]">{label}</dt>
@@ -111,9 +111,9 @@ export function SuccessCelebration({
 
         {registerHref && (
           <p className="mt-4 rounded-xl bg-[#e9ddd6] px-3.5 py-3 text-left text-[13px] text-[#4a3a35]">
-            Сохраните свои данные — в следующий раз не придётся вводить их заново.{" "}
+            {t.success.saveData}{" "}
             <a href={registerHref} className="font-semibold text-[#8a2f45] underline underline-offset-4">
-              Создать аккаунт
+              {t.success.createAccount}
             </a>
           </p>
         )}
@@ -124,7 +124,7 @@ export function SuccessCelebration({
           onClick={onClose}
           className="mt-[18px] h-[52px] w-full rounded-[14px] bg-[#1d1614] font-bold text-ink transition-transform duration-200 active:scale-[0.98]"
         >
-          Отлично
+          {t.success.great}
         </button>
       </div>
     </div>

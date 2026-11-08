@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import { HALL_OBJECT_META, hallPlanSize, rotatedSize, type HallObject } from "@/lib/floorPlan";
 import { SEAT_SIZE, seatPlacements, tableSize } from "@/lib/tableShapes";
-import { guestsLabel, pluralize } from "@/lib/ru";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { ObjectArtwork, floorStyle, objectFontSize, planUnits } from "@/components/floor-plan/PlanShapes";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
@@ -23,8 +23,11 @@ export function guestTableState(
   return table.id === selectedTableId ? "sel" : "free";
 }
 
-export function capacityText(table: Pick<DiningTable, "min_capacity" | "max_capacity">): string {
-  const word = pluralize(table.max_capacity, "место", "места", "мест");
+export function capacityText(
+  table: Pick<DiningTable, "min_capacity" | "max_capacity">,
+  seatWord: (n: number) => string
+): string {
+  const word = seatWord(table.max_capacity);
   return table.min_capacity === table.max_capacity
     ? `${table.max_capacity} ${word}`
     : `${table.min_capacity}–${table.max_capacity} ${word}`;
@@ -58,6 +61,13 @@ export function GuestFloorPlan({
   availableTableIds: Set<number> | null;
   onSelectTable: (table: DiningTable) => void;
 }) {
+  const { t, f, guests } = useI18n();
+  const seatWord = (n: number) => f.plural(n, t.common.seats);
+  // An object still carrying its kind's default label ("Бар", "Вход"…) gets
+  // it in the guest's language; a custom label is shown as typed.
+  const objectLabel = (o: HallObject) =>
+    o.label && o.label === HALL_OBJECT_META[o.kind]?.label ? (t.plan.objects[o.kind] ?? o.label) : o.label;
+  const stateWord = { booked: t.plan.stateBooked, small: t.plan.stateSmall, sel: t.plan.stateSelected, free: t.plan.stateFree };
   const hall = halls.find((h) => h.id === activeHallId) ?? null;
   const activeIndex = Math.max(
     0,
@@ -74,7 +84,7 @@ export function GuestFloorPlan({
           <div className="max-w-full overflow-x-auto">
             <div
               role="tablist"
-              aria-label="Зал"
+              aria-label={t.common.hall}
               className="relative inline-flex rounded-[14px] border border-line-strong bg-[#1a1311] p-1"
             >
               <span
@@ -99,7 +109,7 @@ export function GuestFloorPlan({
                   >
                     <span className="max-w-full truncate">{h.name}</span>
                     {free !== undefined && (
-                      <small className="font-mono text-[10px] font-normal opacity-80">{free} свободно</small>
+                      <small className="font-mono text-[10px] font-normal opacity-80">{t.plan.free(free)}</small>
                     )}
                   </button>
                 );
@@ -110,15 +120,15 @@ export function GuestFloorPlan({
         <div className="flex flex-wrap gap-[18px] text-xs text-muted">
           <span className="inline-flex items-center gap-[7px]">
             <i className="block h-2.5 w-2.5 rounded-full bg-status-confirmed" aria-hidden="true" />
-            Свободен
+            {t.plan.legendFree}
           </span>
           <span className="inline-flex items-center gap-[7px]">
             <i className="block h-2.5 w-2.5 rounded-full bg-claret" aria-hidden="true" />
-            Выбран
+            {t.plan.legendSelected}
           </span>
           <span className="inline-flex items-center gap-[7px]">
             <i className="block h-2.5 w-2.5 rounded-full border border-dashed border-[#8f7c75]" aria-hidden="true" />
-            Занят
+            {t.plan.legendBooked}
           </span>
         </div>
       </div>
@@ -128,7 +138,7 @@ export function GuestFloorPlan({
           key={activeHallId ?? "none"}
           className="gp-plan"
           role="group"
-          aria-label={hall ? `Схема зала «${hall.name}»` : "Схема зала"}
+          aria-label={hall ? t.plan.planOf(hall.name) : t.flow.planAria}
           style={{ aspectRatio: `${room.w} / ${room.h}`, ...floorStyle(hall?.floor ?? "wood", room.w, room.h, false) }}
         >
           {objects.map((o) => (
@@ -144,15 +154,15 @@ export function GuestFloorPlan({
                 transform: `translate(-50%, -50%) rotate(${o.rotation ?? 0}deg)`,
                 fontSize: objectFontSize(o.width, o.height, unit),
               }}
-              title={o.label || HALL_OBJECT_META[o.kind]?.name}
+              title={objectLabel(o) || HALL_OBJECT_META[o.kind]?.name}
             >
-              <ObjectArtwork label={o.label} />
+              <ObjectArtwork label={objectLabel(o)} />
             </span>
           ))}
 
           {tables.length === 0 && (
             <p className="absolute inset-0 flex items-center justify-center text-sm text-muted">
-              В этом зале пока нет доступных столов.
+              {t.plan.noTables}
             </p>
           )}
 
@@ -161,14 +171,14 @@ export function GuestFloorPlan({
             const rotation = table.rotation ?? 0;
             const size = tableSize(table.shape, table.max_capacity);
             const box = rotatedSize(size.w, size.h, rotation);
-            const cap = capacityText(table);
+            const cap = capacityText(table, seatWord);
             const disabled = state === "booked" || state === "small";
             const tip =
               state === "booked"
-                ? `Стол ${table.label} занят в этот день`
+                ? t.plan.tipBooked(table.label)
                 : state === "small"
-                  ? `Стол ${table.label} — до ${guestsLabel(table.max_capacity)}`
-                  : `Стол ${table.label} · до ${guestsLabel(table.max_capacity)}`;
+                  ? t.plan.tipSmall(table.label, guests(table.max_capacity))
+                  : t.plan.tipFree(table.label, guests(table.max_capacity));
             return (
               <button
                 key={table.id}
@@ -181,9 +191,7 @@ export function GuestFloorPlan({
                   height: unit(box.h),
                   transform: "translate(-50%, -50%)",
                 }}
-                aria-label={`Стол ${table.label}, ${cap}${
-                  state === "booked" ? ", занят" : state === "small" ? ", мало мест" : state === "sel" ? ", выбран" : ", свободен"
-                }`}
+                aria-label={`${t.common.table(table.label)}, ${cap}, ${stateWord[state]}`}
                 aria-pressed={state === "sel"}
                 aria-disabled={disabled}
                 onClick={() => {

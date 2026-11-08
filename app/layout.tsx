@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Fraunces, JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteOrigin } from "@/lib/site";
+import { getLang } from "@/lib/i18n/server";
+import { I18nProvider } from "@/components/i18n/I18nProvider";
 
 // Fraunces ships no Cyrillic, so Russian headings fall through to Georgia -
 // a deliberate pairing (the prototypes do the same). Disabling the
@@ -45,13 +47,17 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // The guest's language (KZ/RU/EN switch) lives in a cookie.
+  const lang = await getLang();
   return (
     <html
-      lang="ru"
+      lang={lang}
       className={`${fraunces.variable} ${manrope.variable} ${jetbrainsMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden font-sans">{children}</body>
+      <body className="min-h-full flex flex-col overflow-x-hidden font-sans">
+        <I18nProvider lang={lang}>{children}</I18nProvider>
+      </body>
     </html>
   );
 }

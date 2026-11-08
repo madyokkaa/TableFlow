@@ -3,11 +3,16 @@
 import { useState, type FormEvent } from "react";
 import { parseError } from "@/lib/api";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { useI18n } from "@/components/i18n/I18nProvider";
+
+const DONE = "__done";
+const NETWORK_FAILED = "__network_failed";
 
 /** The "delete my data" form on /privacy: one field for the email or phone
  * the booking was made with. The server answers the same way whether or
  * not anything matched, and so does this form. */
 export function EraseDataForm() {
+  const { t, serverError } = useI18n();
   const [contact, setContact] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -30,10 +35,10 @@ export function EraseDataForm() {
         return;
       }
       const body: { message?: string } = await res.json().catch(() => ({}));
-      setResult(body.message ?? "Запрос выполнен.");
+      setResult(body.message ?? DONE);
       setContact("");
     } catch {
-      setError("Не удалось связаться с сервером. Проверьте подключение и попробуйте снова.");
+      setError(NETWORK_FAILED);
     } finally {
       setSubmitting(false);
     }
@@ -42,7 +47,7 @@ export function EraseDataForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Email или телефон, указанный при бронировании</span>
+        <span className="font-medium text-ink">{t.erase.contact}</span>
         <input
           value={contact}
           onChange={(e) => setContact(e.target.value)}
@@ -50,17 +55,17 @@ export function EraseDataForm() {
           maxLength={255}
           autoComplete="email"
           className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-          placeholder="ivan@example.com или +7 (900) 000-00-00"
+          placeholder={t.erase.contactPlaceholder}
         />
       </label>
       {error && (
         <p role="alert" className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">
-          {error}
+          {error === NETWORK_FAILED ? t.common.networkError : serverError(error)}
         </p>
       )}
       {result && (
         <p role="status" className="rounded-lg bg-status-confirmed-tint px-3 py-2 text-sm text-status-confirmed">
-          {result}
+          {result === DONE ? t.erase.done : serverError(result)}
         </p>
       )}
       <button
@@ -68,7 +73,7 @@ export function EraseDataForm() {
         disabled={submitting || !contact.trim()}
         className="inline-flex h-11 items-center justify-center self-start rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-colors duration-150 ease-out hover:bg-claret-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? <LoadingIndicator label="Удаляем…" /> : "Удалить мои данные"}
+        {submitting ? <LoadingIndicator label={t.erase.deleting} /> : t.erase.submit}
       </button>
     </form>
   );

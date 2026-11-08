@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { formatDateTime, guestsLabel } from "@/lib/ru";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { formatPhoneInput } from "@/lib/phone";
 import { isValidEmail } from "@/lib/validation";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
@@ -32,6 +32,7 @@ export function ConfirmStep({
   defaultPhone?: string;
   defaultEmail?: string;
 }) {
+  const { t, f, guests } = useI18n();
   const [name, setName] = useState(defaultName);
   const [phone, setPhone] = useState(() => formatPhoneInput(defaultPhone));
   const [email, setEmail] = useState(defaultEmail);
@@ -53,19 +54,19 @@ export function ConfirmStep({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="border-b border-line pb-4">
-        <p className="text-xs uppercase tracking-[0.14em] text-muted">Ваш столик</p>
-        <p className="mt-1 font-mono text-lg font-medium tabular-nums capitalize">{formatDateTime(date, time)}</p>
+        <p className="text-xs uppercase tracking-[0.14em] text-muted">{t.confirm.yourTable}</p>
+        <p className="mt-1 font-mono text-lg font-medium tabular-nums capitalize">{f.dateTime(date, time)}</p>
         <p className="text-sm text-muted">
-          Стол {table.label} · {guestsLabel(partySize)}
+          {t.confirm.tableGuests(table.label, guests(partySize))}
         </p>
       </div>
 
       {prefilled && (
-        <p className="-mb-1 text-xs text-muted">Данные подставлены из вашего аккаунта — при необходимости измените.</p>
+        <p className="-mb-1 text-xs text-muted">{t.confirm.prefilled}</p>
       )}
 
       <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Имя</span>
+        <span className="font-medium text-ink">{t.confirm.name}</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -73,13 +74,13 @@ export function ConfirmStep({
           maxLength={120}
           autoComplete="name"
           className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
-          placeholder="Иван Иванов"
+          placeholder={t.confirm.namePlaceholder}
         />
       </label>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Телефон</span>
+          <span className="font-medium text-ink">{t.confirm.phone}</span>
           <input
             value={phone}
             onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
@@ -92,7 +93,7 @@ export function ConfirmStep({
           />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-ink">Email</span>
+          <span className="font-medium text-ink">{t.confirm.email}</span>
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -107,9 +108,9 @@ export function ConfirmStep({
           />
         </label>
       </div>
-      {emailTouched && !emailValid && <p className="-mt-2 text-xs text-status-cancelled">Проверьте формат email</p>}
+      {emailTouched && !emailValid && <p className="-mt-2 text-xs text-status-cancelled">{t.confirm.emailInvalid}</p>}
       {!hasContact && (
-        <p className="-mt-2 text-xs text-muted">Укажите телефон или email, чтобы мы могли с вами связаться.</p>
+        <p className="-mt-2 text-xs text-muted">{t.confirm.needContact}</p>
       )}
 
       <label className="flex items-start gap-2.5 text-sm">
@@ -121,14 +122,14 @@ export function ConfirmStep({
           className="mt-0.5 h-4 w-4 shrink-0 accent-claret"
         />
         <span className="text-ink">
-          Согласен на обработку персональных данных{" "}
+          {t.confirm.consent}{" "}
           <Link
             href="/privacy"
             target="_blank"
             rel="noopener"
             className="text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
           >
-            (подробнее)
+            {t.confirm.consentMore}
           </Link>
         </span>
       </label>
@@ -143,7 +144,7 @@ export function ConfirmStep({
         transition={{ type: "spring", stiffness: 400, damping: 17 }}
         className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-colors duration-150 ease-out hover:bg-claret-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? <LoadingIndicator label="Подтверждаем…" /> : "Забронировать стол"}
+        {submitting ? <LoadingIndicator label={t.confirm.submitting} /> : t.confirm.submit}
       </motion.button>
     </form>
   );

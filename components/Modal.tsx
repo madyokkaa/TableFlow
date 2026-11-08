@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "motion/react";
 import { X } from "lucide-react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 export function Modal({
   open,
@@ -16,6 +17,7 @@ export function Modal({
   title: string;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -52,7 +54,7 @@ export function Modal({
           <motion.button
             type="button"
             onClick={onClose}
-            aria-label="Закрыть"
+            aria-label={t.common.close}
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.92 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}

@@ -3,6 +3,8 @@
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff } from "lucide-react";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
 export const AUTH_GHOST =
   "inline-flex h-[46px] items-center gap-2 rounded-[13px] border border-line-strong bg-transparent px-[18px] text-sm font-semibold text-ink/90 transition-[border-color,background-color,color] duration-200 hover:border-[#8a6a62] hover:bg-surface-raised hover:text-ink";
@@ -31,6 +33,7 @@ export function AuthCard({
   overlay?: ReactNode;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <main className="relative flex min-h-svh w-full flex-1 items-center justify-center overflow-hidden px-4 py-8">
       <div className="gp-lamp !left-1/2 !right-auto !top-1/2 -ml-[560px] -mt-[380px]" aria-hidden="true" />
@@ -41,7 +44,10 @@ export function AuthCard({
       >
         {aside}
         <div className="relative flex flex-col gap-[18px] px-5 py-7 sm:px-10 sm:pb-[34px] sm:pt-10">
-          <span className="font-mono text-[11px] tracking-[0.28em] text-[#c9b6ae]">TABLEFLOW</span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="font-mono text-[11px] tracking-[0.28em] text-[#c9b6ae]">TABLEFLOW</span>
+            <LanguageSwitcher />
+          </div>
           <div className="flex flex-col gap-2">
             <h1 className="font-display text-[38px] font-normal leading-[1.05] tracking-[-0.02em] text-balance">{title}</h1>
             {subtitle && <p className="text-sm leading-normal text-muted text-pretty">{subtitle}</p>}
@@ -52,7 +58,7 @@ export function AuthCard({
             className="group mt-auto flex min-h-11 items-center justify-center gap-2 border-t border-[#2c2220] pt-3.5 text-[13px] text-muted transition-colors hover:text-ink"
           >
             <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" strokeWidth={2} aria-hidden="true" />
-            Продолжить как гость — без аккаунта
+            {t.auth.asGuest}
           </Link>
           {overlay}
         </div>
@@ -157,6 +163,7 @@ export function AuthField({
 
 /** AuthField for passwords, with a show/hide toggle in place of the tick. */
 export function PasswordField(props: Omit<Parameters<typeof AuthField>[0], "trailing" | "type">) {
+  const { t } = useI18n();
   const [shown, setShown] = useState(false);
   return (
     <AuthField
@@ -166,7 +173,7 @@ export function PasswordField(props: Omit<Parameters<typeof AuthField>[0], "trai
         <button
           type="button"
           onClick={() => setShown((v) => !v)}
-          aria-label={shown ? "Скрыть пароль" : "Показать пароль"}
+          aria-label={shown ? t.auth.hidePassword : t.auth.showPassword}
           aria-pressed={shown}
           className="absolute right-1.5 top-[7px] flex h-9 w-9 items-center justify-center rounded-[10px] text-[#a8958e] transition-colors hover:bg-[#2a201d] hover:text-ink"
         >

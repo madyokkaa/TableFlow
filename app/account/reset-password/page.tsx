@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { Lock } from "lucide-react";
 import { AUTH_GHOST, AUTH_LINK, AuthCard, AuthError, AuthSubmit, PasswordField } from "@/components/guest/AuthCard";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 export default function GuestResetPasswordPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [ready, setReady] = useState(false);
   // Whether the recovery link failed, for any reason - never the raw
@@ -64,11 +66,11 @@ export default function GuestResetPasswordPage() {
     setFormError(null);
 
     if (password.length < 8) {
-      setFormError("Пароль должен быть не короче 8 символов.");
+      setFormError(t.auth.passwordTooShort);
       return;
     }
     if (password !== confirmPassword) {
-      setFormError("Пароли не совпадают.");
+      setFormError(t.auth.passwordsMismatch);
       return;
     }
 
@@ -85,17 +87,17 @@ export default function GuestResetPasswordPage() {
 
   if (done) {
     return (
-      <AuthCard title="Пароль обновлён">
+      <AuthCard title={t.auth.passwordUpdated}>
         <div className="flex flex-col items-center gap-4 py-4 text-center">
           <svg className="ga-check h-[72px] w-[72px]" viewBox="0 0 72 72" fill="none" aria-hidden="true">
             <circle cx="36" cy="36" r="32" stroke="var(--color-status-confirmed)" strokeWidth="3" />
             <path d="M23 37l9 9 17-19" stroke="var(--color-status-confirmed)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <p role="status" className="text-sm text-muted">
-            Теперь вы можете войти с новым паролем.
+            {t.auth.canSignInNow}
           </p>
           <button type="button" onClick={() => router.replace("/account/login")} className={AUTH_GHOST}>
-            Перейти ко входу
+            {t.auth.goToLogin}
           </button>
         </div>
       </AuthCard>
@@ -104,12 +106,12 @@ export default function GuestResetPasswordPage() {
 
   if (linkFailed) {
     return (
-      <AuthCard title="Ссылка не сработала">
+      <AuthCard title={t.auth.linkBroken}>
         <p role="alert" className="text-sm text-status-cancelled">
-          Эта ссылка истекла или уже была использована. Запросите новую.
+          {t.auth.linkExpired}
         </p>
         <a href="/account/forgot-password" className={AUTH_LINK}>
-          Запросить новую ссылку
+          {t.auth.requestNewLink}
         </a>
       </AuthCard>
     );
@@ -117,10 +119,10 @@ export default function GuestResetPasswordPage() {
 
   if (!ready) {
     return (
-      <AuthCard title="Проверяем ссылку…">
+      <AuthCard title={t.auth.checkingLink}>
         <p className="flex items-center gap-3 text-sm text-muted" role="status">
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-claret/25 border-t-claret" aria-hidden="true" />
-          Секунду…
+          {t.auth.oneSecond}
         </p>
       </AuthCard>
     );
@@ -128,20 +130,20 @@ export default function GuestResetPasswordPage() {
 
   const lock = <Lock className="h-[17px] w-[17px]" strokeWidth={2} />;
   return (
-    <AuthCard title="Новый пароль" subtitle="Минимум 8 символов. После сохранения войдите с ним.">
+    <AuthCard title={t.auth.newPassword} subtitle={t.auth.newPasswordSubtitle}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
         <PasswordField
-          label="Новый пароль"
+          label={t.auth.newPassword}
           icon={lock}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={8}
           autoComplete="new-password"
-          hint={password.length >= 8 ? "Отлично" : `Минимум 8 символов${password.length ? ` · ещё ${8 - password.length}` : ""}`}
+          hint={password.length >= 8 ? t.auth.great : t.auth.minChars(8, 8 - password.length)}
         />
         <PasswordField
-          label="Подтвердите пароль"
+          label={t.auth.confirmPassword}
           icon={lock}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
@@ -150,8 +152,8 @@ export default function GuestResetPasswordPage() {
           autoComplete="new-password"
         />
         {formError && <AuthError>{formError}</AuthError>}
-        <AuthSubmit busy={submitting} busyText="Сохраняем…">
-          Сохранить пароль
+        <AuthSubmit busy={submitting} busyText={t.auth.saving}>
+          {t.auth.savePassword}
         </AuthSubmit>
       </form>
     </AuthCard>

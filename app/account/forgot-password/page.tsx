@@ -4,8 +4,10 @@ import { useState, type FormEvent } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { Mail } from "lucide-react";
 import { AUTH_GHOST, AUTH_LINK_MUTED, AuthCard, AuthField, AuthSubmit } from "@/components/guest/AuthCard";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 export default function GuestForgotPasswordPage() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -28,7 +30,7 @@ export default function GuestForgotPasswordPage() {
 
   if (sent) {
     return (
-      <AuthCard title="Проверьте почту">
+      <AuthCard title={t.auth.checkMail}>
         <div className="flex flex-col items-center gap-4 py-4 text-center">
           <svg
             className="h-[60px] w-[84px] animate-[ga-envelope_1.6s_cubic-bezier(.3,1.2,.5,1)_both]"
@@ -43,10 +45,10 @@ export default function GuestForgotPasswordPage() {
             <path d="M4 6l38 28L80 6" />
           </svg>
           <p role="status" className="text-sm text-muted">
-            Если у <b className="text-ink">{email}</b> есть аккаунт, мы отправили на него ссылку для смены пароля.
+            {t.auth.forgotSentBefore} <b className="text-ink">{email}</b> {t.auth.forgotSentAfter}
           </p>
           <a href="/account/login" className={AUTH_GHOST}>
-            Назад ко входу
+            {t.auth.backToLogin}
           </a>
         </div>
       </AuthCard>
@@ -54,7 +56,7 @@ export default function GuestForgotPasswordPage() {
   }
 
   return (
-    <AuthCard title="Восстановление пароля" subtitle="Отправим ссылку для установки нового пароля.">
+    <AuthCard title={t.auth.forgotTitle} subtitle={t.auth.forgotSubtitle}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
         <AuthField
           label="Email"
@@ -66,12 +68,12 @@ export default function GuestForgotPasswordPage() {
           autoComplete="email"
           placeholder="ivan@example.com"
         />
-        <AuthSubmit busy={sending} busyText="Отправляем…">
-          Отправить ссылку
+        <AuthSubmit busy={sending} busyText={t.auth.sending}>
+          {t.auth.sendLink}
         </AuthSubmit>
       </form>
       <a href="/account/login" className={AUTH_LINK_MUTED}>
-        ← Назад ко входу
+        ← {t.auth.backToLogin}
       </a>
     </AuthCard>
   );

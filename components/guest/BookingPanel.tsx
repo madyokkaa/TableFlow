@@ -2,7 +2,7 @@
 
 import { ArrowRight, Minus, Plus, X } from "lucide-react";
 import { addDaysIso } from "@/lib/scheduling";
-import { formatTime, guestsLabel } from "@/lib/ru";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import type { DiningTable } from "@/components/hostess/TableForm";
 import { capacityText } from "./GuestFloorPlan";
 
@@ -14,14 +14,10 @@ function fromIso(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-/** "пт, 3 октября" */
-export function shortDayLabel(iso: string): string {
-  return fromIso(iso).toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" });
-}
-
 function Steps({ step }: { step: 1 | 2 | 3 }) {
+  const { t } = useI18n();
   const progress = step === 3 ? 1 : step === 2 ? 0.5 : 0.04;
-  const items = ["Стол", "Время", "Готово"];
+  const items = t.panel.steps;
   return (
     <div className="flex flex-col gap-2.5">
       <ol className="flex justify-between text-xs text-[#8f7c75]">
@@ -53,20 +49,21 @@ function Steps({ step }: { step: 1 | 2 | 3 }) {
 }
 
 function DayStrip({ value, today, maxDate, onChange }: { value: string; today: string; maxDate: string; onChange: (iso: string) => void }) {
+  const { t, f } = useI18n();
   const days = Array.from({ length: DAYS_SHOWN }, (_, i) => addDaysIso(today, i)).filter((iso) => iso <= maxDate);
   return (
-    <div className="-mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-1.5 pt-1" role="group" aria-label="Дата">
+    <div className="-mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-1.5 pt-1" role="group" aria-label={t.panel.date}>
       {days.map((iso, i) => {
         const date = fromIso(iso);
         const selected = iso === value;
-        const top = i === 0 ? "сегодня" : i === 1 ? "завтра" : date.toLocaleDateString("ru-RU", { weekday: "short" });
+        const top = i === 0 ? t.panel.today : i === 1 ? t.panel.tomorrow : f.weekdayShort(iso);
         return (
           <button
             key={iso}
             type="button"
             onClick={() => onChange(iso)}
             aria-pressed={selected}
-            aria-label={date.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
+            aria-label={f.dayLong(iso)}
             className={`flex h-[68px] min-w-12 flex-1 flex-col items-center justify-center gap-px rounded-[14px] border transition-[transform,background-color,border-color,color] duration-300 ease-[cubic-bezier(0.3,1.4,0.5,1)] ${
               selected
                 ? "-translate-y-[3px] border-ink bg-ink text-[#1d1614]"
@@ -76,7 +73,7 @@ function DayStrip({ value, today, maxDate, onChange }: { value: string; today: s
             <small className={`text-[11px] ${selected ? "text-[#5c4a44]" : "text-muted"}`}>{top}</small>
             <b className="font-display text-[22px] font-normal leading-[1.05]">{date.getDate()}</b>
             <small className={`text-[11px] ${selected ? "text-[#5c4a44]" : "text-muted"}`}>
-              {date.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "")}
+              {f.monthShort(iso)}
             </small>
           </button>
         );
@@ -86,11 +83,12 @@ function DayStrip({ value, today, maxDate, onChange }: { value: string; today: s
 }
 
 function GuestStepper({ value, max, onChange }: { value: number; max: number; onChange: (n: number) => void }) {
+  const { t } = useI18n();
   const button =
     "flex h-11 w-11 items-center justify-center rounded-full border border-[#4a3833] bg-surface-raised transition-[transform,border-color] duration-200 hover:enabled:border-claret active:enabled:scale-[0.88] disabled:cursor-not-allowed disabled:opacity-35";
   return (
     <div className="flex items-center gap-3.5">
-      <button type="button" className={button} disabled={value <= 1} onClick={() => onChange(value - 1)} aria-label="Меньше гостей">
+      <button type="button" className={button} disabled={value <= 1} onClick={() => onChange(value - 1)} aria-label={t.panel.fewerGuests}>
         <Minus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
       </button>
       {/* Re-keyed on change so the number "bounces" in each time. */}
@@ -101,7 +99,7 @@ function GuestStepper({ value, max, onChange }: { value: number; max: number; on
       >
         {value}
       </span>
-      <button type="button" className={button} disabled={value >= max} onClick={() => onChange(value + 1)} aria-label="Больше гостей">
+      <button type="button" className={button} disabled={value >= max} onClick={() => onChange(value + 1)} aria-label={t.panel.moreGuests}>
         <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
       </button>
       <span className="ml-auto flex flex-wrap justify-end gap-1" aria-hidden="true">
@@ -118,6 +116,7 @@ function GuestStepper({ value, max, onChange }: { value: number; max: number; on
 }
 
 function TableCard({ table, hallName, onClear }: { table: DiningTable | null; hallName: string; onClear: () => void }) {
+  const { t, f, guests } = useI18n();
   if (!table) {
     return (
       <div className="flex items-center gap-3.5 rounded-[18px] border border-dashed border-line-strong p-3.5 text-[13px] text-muted">
@@ -138,7 +137,7 @@ function TableCard({ table, hallName, onClear }: { table: DiningTable | null; ha
           <rect x="5" y="20" width="5" height="8" rx="2" />
           <rect x="38" y="20" width="5" height="8" rx="2" />
         </svg>
-        <span>Нажмите на стол на схеме — здесь появятся детали и свободное время.</span>
+        <span>{t.panel.pickHint}</span>
       </div>
     );
   }
@@ -152,16 +151,16 @@ function TableCard({ table, hallName, onClear }: { table: DiningTable | null; ha
       </div>
       <div className="flex min-w-0 flex-col gap-[3px]">
         <div className="truncate text-[15px] font-bold">
-          Стол {table.label} · {hallName.toLowerCase()}
+          {t.panel.tableInHall(table.label, hallName.toLowerCase())}
         </div>
         <div className="text-[13px] text-muted">
-          до {guestsLabel(table.max_capacity)} · {capacityText(table)}
+          {t.panel.upTo(guests(table.max_capacity))} · {capacityText(table, (n) => f.plural(n, t.common.seats))}
         </div>
       </div>
       <button
         type="button"
         onClick={onClear}
-        aria-label="Снять выбор стола"
+        aria-label={t.panel.clearTable}
         className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-line hover:text-ink"
       >
         <X className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
@@ -183,8 +182,9 @@ function TimeSlots({
   value: string | null;
   onChange: (time: string) => void;
 }) {
+  const { t, f } = useI18n();
   return (
-    <div className="grid grid-cols-4 gap-2" role="group" aria-label="Время">
+    <div className="grid grid-cols-4 gap-2" role="group" aria-label={t.panel.time}>
       {times.map((time, i) => {
         const taken = !available.has(time);
         const selected = time === value;
@@ -204,7 +204,7 @@ function TimeSlots({
                   : "border-line-strong bg-surface-raised hover:-translate-y-0.5 hover:border-claret"
             }`}
           >
-            {formatTime(time)}
+            {f.time(time)}
           </button>
         );
       })}
@@ -251,40 +251,41 @@ export function BookingPanel({
   onTimeChange: (time: string) => void;
   onSubmit: () => void;
 }) {
+  const { t, f, guests } = useI18n();
   const step: 1 | 2 | 3 = table && time ? 3 : table ? 2 : 1;
-  const dayLabel = shortDayLabel(date);
+  const dayLabel = f.dayShort(date);
   const summary = !table
-    ? "Выберите стол на схеме"
+    ? t.panel.summaryPickTable
     : !time
-      ? `Стол ${table.label} · ${dayLabel} · выберите время`
-      : `Стол ${table.label} · ${dayLabel} · ${formatTime(time)} · ${guestsLabel(partySize)}`;
-  const ctaText = !table ? "Выберите стол" : !time ? "Выберите время" : `Забронировать на ${formatTime(time)}`;
+      ? t.panel.summaryPickTime(table.label, dayLabel)
+      : t.panel.summary(table.label, dayLabel, f.time(time), guests(partySize));
+  const ctaText = !table ? t.panel.ctaPickTable : !time ? t.panel.ctaPickTime : t.panel.ctaBook(f.time(time));
 
   return (
     <aside
-      aria-label="Бронирование"
+      aria-label={t.panel.aria}
       className="flex animate-[gp-up_.7s_.2s_cubic-bezier(.2,.8,.2,1)_both] flex-col gap-[22px] rounded-3xl border border-line-strong bg-surface p-6 lg:sticky lg:top-5"
     >
       <Steps step={step} />
 
       <div className="flex flex-col gap-2.5">
-        <span className={CAPTION}>Дата</span>
+        <span className={CAPTION}>{t.panel.date}</span>
         <DayStrip value={date} today={today} maxDate={maxDate} onChange={onDateChange} />
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <span className={CAPTION}>Гостей</span>
+        <span className={CAPTION}>{t.panel.guests}</span>
         <GuestStepper value={partySize} max={maxPartySize} onChange={onPartySizeChange} />
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <span className={CAPTION}>Стол</span>
+        <span className={CAPTION}>{t.panel.table}</span>
         <TableCard table={table} hallName={hallName} onClear={onClearTable} />
       </div>
 
       {table && (
         <div className="flex flex-col gap-2.5">
-          <span className={CAPTION}>Время</span>
+          <span className={CAPTION}>{t.panel.time}</span>
           {availabilityError ? (
             <p role="alert" className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-3 text-sm text-status-cancelled">
               {availabilityError}
@@ -292,7 +293,7 @@ export function BookingPanel({
           ) : availabilityLoading ? (
             <div className="skeleton h-24 rounded-xl" />
           ) : availableTimes.size === 0 ? (
-            <p className="text-sm text-muted">На этот день у стола нет свободного времени — выберите другую дату или стол.</p>
+            <p className="text-sm text-muted">{t.panel.noTimes}</p>
           ) : (
             <TimeSlots tableId={table.id} times={times} available={availableTimes} value={time} onChange={onTimeChange} />
           )}

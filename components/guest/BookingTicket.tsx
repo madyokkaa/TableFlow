@@ -6,7 +6,7 @@ import { hallPlanSize } from "@/lib/floorPlan";
 import { tableSize } from "@/lib/tableShapes";
 import { GUEST_CANCELLATION_REASONS, OTHER_REASON } from "@/lib/reservations";
 import { timeZoneOffsetMinutes } from "@/lib/scheduling";
-import { formatTime, guestsLabel } from "@/lib/ru";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { planUnits } from "@/components/floor-plan/PlanShapes";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
@@ -44,13 +44,8 @@ function useNow(intervalMs: number) {
   return now;
 }
 
-function whenLabel(date: string, time: string): string {
-  const [y, m, d] = date.split("-").map(Number);
-  const label = new Date(y, m - 1, d).toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" });
-  return `${label.charAt(0).toUpperCase()}${label.slice(1)} · ${formatTime(time)}`;
-}
-
 function MiniMap({ hall, tables, mine }: { hall: Hall | null; tables: DiningTable[]; mine: Set<number> }) {
+  const { t: msg } = useI18n();
   if (!hall || tables.length === 0) return null;
   const room = hallPlanSize(hall);
   const unit = planUnits(room.w);
@@ -59,7 +54,7 @@ function MiniMap({ hall, tables, mine }: { hall: Hall | null; tables: DiningTabl
   return (
     <div
       className="relative min-h-[220px] bg-[#181210] bg-[radial-gradient(#2c2220_1px,transparent_1px)] bg-[length:14px_14px] p-4"
-      aria-label={myTable ? `Ваш стол ${myTable.label} на схеме зала` : "Схема зала"}
+      aria-label={myTable ? msg.ticket.myTableAria(myTable.label) : msg.flow.planAria}
       role="img"
     >
       <div className="relative w-full [container-type:inline-size]" style={{ aspectRatio: `${room.w} / ${room.h}` }}>
@@ -105,7 +100,7 @@ function MiniMap({ hall, tables, mine }: { hall: Hall | null; tables: DiningTabl
           </span>
         )}
       </div>
-      <span className="absolute bottom-3 left-3.5 font-mono text-[10px] tracking-[0.16em] text-[#8f7c75]">ВАШ СТОЛ НА СХЕМЕ</span>
+      <span className="absolute bottom-3 left-3.5 font-mono text-[10px] tracking-[0.16em] text-[#8f7c75]">{msg.ticket.myTableCaption}</span>
     </div>
   );
 }
@@ -124,6 +119,7 @@ export function BookingTicket({
   hallTables: DiningTable[];
   onCancel: (reason: string | null) => Promise<void>;
 }) {
+  const { t, f, guests, serverError } = useI18n();
   const now = useNow(30_000);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
@@ -136,8 +132,8 @@ export function BookingTicket({
   const confirmed = reservation.status === "confirmed";
   const tables =
     reservation.tableLabels.length > 1
-      ? `столы ${reservation.tableLabels.join(", ")}`
-      : `стол ${reservation.tableLabels[0] ?? "—"}`;
+      ? t.common.tablesLower(reservation.tableLabels.join(", "))
+      : t.common.tableLower(reservation.tableLabels[0] ?? "—");
 
   async function confirmCancel() {
     setPending(true);
@@ -145,7 +141,7 @@ export function BookingTicket({
     try {
       await onCancel(reason === OTHER_REASON ? otherText.trim() || null : reason);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Что-то пошло не так.");
+      setError(err instanceof Error ? serverError(err.message) : t.common.somethingWrong);
       setPending(false);
     }
   }
@@ -160,19 +156,19 @@ export function BookingTicket({
             }`}
           >
             <span className={`h-1.5 w-1.5 rounded-full bg-current ${confirmed ? "" : "animate-breathe"}`} aria-hidden="true" />
-            {confirmed ? "Подтверждена" : "Ждёт подтверждения"}
+            {confirmed ? t.ticket.confirmed : t.ticket.waiting}
           </span>
           <div className="font-display text-[34px] leading-[1.05]">
-            {whenLabel(reservation.date, reservation.start_time)}
+            {f.dayShortCapital(reservation.date)} · {f.time(reservation.start_time)}
             <small className="mt-1.5 block font-sans text-[13px] text-muted">
-              {reservation.hallName || "Зал"} · {tables} · {guestsLabel(reservation.party_size)}
+              {reservation.hallName || t.common.hall} · {tables} · {guests(reservation.party_size)}
             </small>
           </div>
-          <div className="flex gap-2" role="timer" aria-label={`До визита ${Math.floor(minutes / 1440)} дн ${Math.floor(minutes / 60) % 24} ч ${minutes % 60} мин`}>
+          <div className="flex gap-2" role="timer" aria-label={t.ticket.timerAria(Math.floor(minutes / 1440), Math.floor(minutes / 60) % 24, minutes % 60)}>
             {[
-              [pad(Math.floor(minutes / 1440)), "дн"],
-              [pad(Math.floor(minutes / 60) % 24), "ч"],
-              [pad(minutes % 60), "мин"],
+              [pad(Math.floor(minutes / 1440)), t.ticket.days],
+              [pad(Math.floor(minutes / 60) % 24), t.ticket.hours],
+              [pad(minutes % 60), t.ticket.minutes],
             ].map(([value, label]) => (
               <div key={label} className="flex min-w-[62px] flex-col gap-0.5 rounded-[14px] border border-line-strong bg-[#261d1a] px-2 py-2.5 text-center" aria-hidden="true">
                 <b className="font-mono text-[22px] font-medium">{value}</b>
@@ -181,7 +177,7 @@ export function BookingTicket({
             ))}
           </div>
           <div className="text-[13px] text-muted">
-            Код брони <b className="font-semibold text-ink">TF-{reservation.id}</b>
+            {t.ticket.code} <b className="font-semibold text-ink">TF-{reservation.id}</b>
           </div>
           <div className="flex flex-wrap gap-2.5">
             <button
@@ -191,7 +187,7 @@ export function BookingTicket({
               className={`${GHOST} text-status-cancelled hover:border-status-cancelled hover:bg-status-cancelled-tint`}
             >
               <X className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-              Отменить
+              {t.ticket.cancel}
             </button>
           </div>
         </div>
@@ -200,8 +196,8 @@ export function BookingTicket({
 
       {cancelOpen && (
         <div className="flex animate-[gp-open_.45s_cubic-bezier(.2,.9,.3,1.2)_both] flex-col gap-3 rounded-[18px] border border-[#4a2a26] bg-[#221816] p-4">
-          <b className="text-sm">Почему отменяете? Это поможет ресторану</b>
-          <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Причина отмены">
+          <b className="text-sm">{t.ticket.whyCancel}</b>
+          <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={t.ticket.reason}>
             {[...GUEST_CANCELLATION_REASONS, OTHER_REASON].map((r) => (
               <button
                 key={r}
@@ -211,7 +207,7 @@ export function BookingTicket({
                 onClick={() => setReason((current) => (current === r ? null : r))}
                 className={`${GHOST} h-auto min-h-11 py-2 text-left ${reason === r ? "border-claret bg-claret-tint text-claret hover:border-claret hover:bg-claret-tint" : ""}`}
               >
-                {r}
+                {t.reasons[r] ?? r}
               </button>
             ))}
           </div>
@@ -221,8 +217,8 @@ export function BookingTicket({
               onChange={(e) => setOtherText(e.target.value)}
               maxLength={500}
               rows={2}
-              placeholder="Расскажите, что случилось"
-              aria-label="Причина отмены"
+              placeholder={t.ticket.reasonPlaceholder}
+              aria-label={t.ticket.reason}
               className="w-full rounded-[13px] border border-line-strong bg-[#1a1311] px-3.5 py-2.5 text-sm outline-none focus:border-claret"
             />
           )}
@@ -238,10 +234,10 @@ export function BookingTicket({
               onClick={confirmCancel}
               className="inline-flex h-11 items-center rounded-[13px] bg-status-cancelled px-[18px] text-sm font-bold text-on-accent transition-transform duration-200 hover:-translate-y-px disabled:opacity-60"
             >
-              {pending ? "Отменяем…" : "Отменить бронь"}
+              {pending ? t.ticket.cancelling : t.ticket.cancelBooking}
             </button>
             <button type="button" disabled={pending} onClick={() => setCancelOpen(false)} className={GHOST}>
-              Оставить
+              {t.ticket.keep}
             </button>
           </div>
         </div>

@@ -17,37 +17,18 @@ import {
   PasswordField,
 } from "./AuthCard";
 import { SetTableScene } from "./SetTableScene";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 export type GuestAuthMode = "login" | "register" | "link";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const MIN_PASSWORD = 8;
 
-const COPY: Record<GuestAuthMode, { title: string; subtitle: string; submit: string; busy: string }> = {
-  login: {
-    title: "С возвращением",
-    subtitle: "Войдите, чтобы видеть свои брони и не вводить данные заново.",
-    submit: "Войти",
-    busy: "Входим…",
-  },
-  register: {
-    title: "Свой стол",
-    subtitle: "Аккаунт сохранит ваши брони и контакты — в следующий раз всё займёт пару кликов.",
-    submit: "Создать аккаунт",
-    busy: "Создаём аккаунт…",
-  },
-  link: {
-    title: "Вход по ссылке",
-    subtitle: "Без пароля: пришлём одноразовую ссылку на почту.",
-    submit: "Прислать ссылку",
-    busy: "Отправляем…",
-  },
-};
-
 /** Guest login / registration / magic-link sign-in on one card. Switching
  * tabs keeps the typed email; the URL follows the tab so a reload lands on
  * the same form. Auth calls are the same as before the redesign. */
 export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode: GuestAuthMode; initialEmail?: string }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [mode, setMode] = useState<GuestAuthMode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
@@ -71,14 +52,14 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
   const done = phase === "done";
 
   const caption = done
-    ? "Добро пожаловать!"
+    ? t.auth.captionWelcome
     : ready
-      ? "Всё готово — заходите"
+      ? t.auth.captionReady
       : emailOk
         ? isLink
-          ? "Отправим ссылку"
-          : "Осталось накрыть стол"
-        : "Накрываем стол для вас…";
+          ? t.auth.captionLink
+          : t.auth.captionAlmost
+        : t.auth.captionSetting;
 
   function switchMode(next: GuestAuthMode) {
     setMode(next);
@@ -115,7 +96,7 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
       setBusy(false);
       if (error) {
         console.error("[account/login] signInWithOtp failed", error);
-        fail("Не удалось отправить ссылку. Попробуйте позже.");
+        fail(t.auth.linkFailed);
         return;
       }
       setPhase("sent");
@@ -135,8 +116,8 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
         }
         fail(
           error.message.toLowerCase().includes("invalid")
-            ? "Неверный email или пароль."
-            : "Не удалось войти. Проверьте соединение и попробуйте ещё раз."
+            ? t.auth.wrongCredentials
+            : t.auth.loginFailed
         );
         return;
       }
@@ -145,11 +126,11 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
     }
 
     if (password.length < MIN_PASSWORD) {
-      fail("Пароль должен быть не короче 8 символов.");
+      fail(t.auth.passwordTooShort);
       return;
     }
     if (password !== confirmPassword) {
-      fail("Пароли не совпадают.");
+      fail(t.auth.passwordsMismatch);
       return;
     }
     setBusy(true);
@@ -174,7 +155,7 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
         return;
       }
       console.error("[account/register] signUp failed", error);
-      fail("Не удалось создать аккаунт. Попробуйте позже.");
+      fail(t.auth.registerFailed);
       return;
     }
     if (data.session) {
@@ -187,29 +168,29 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
     setPhase("sent");
   }
 
-  const copy = COPY[mode];
+  const copy = t.auth[mode];
   const overlay =
     phase === "done" ? (
       <AuthOverlay
         icon="check"
-        title={isRegister ? "Аккаунт создан" : "Вы вошли"}
+        title={isRegister ? t.auth.accountCreated : t.auth.signedIn}
         actions={
           <>
             <Link href="/" className="gp-shine relative inline-flex h-[46px] items-center overflow-hidden rounded-[13px] bg-claret px-[22px] text-sm font-bold text-on-accent">
-              Забронировать столик
+              {t.common.bookTable}
             </Link>
             <a href="/account" className={AUTH_GHOST}>
-              Мои брони
+              {t.common.myBookings}
             </a>
           </>
         }
       >
-        Стол накрыт. Можно выбирать время.
+        {t.auth.tableSet}
       </AuthOverlay>
     ) : phase === "sent" ? (
       <AuthOverlay
         icon="envelope"
-        title={isLink ? "Ссылка летит к вам" : "Проверьте почту"}
+        title={isLink ? t.auth.linkSent : t.auth.checkMail}
         actions={
           <button
             type="button"
@@ -223,19 +204,17 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
               }
             }}
           >
-            {isLink ? "Указать другой email" : "Назад ко входу"}
+            {isLink ? t.auth.otherEmail : t.auth.backToLogin}
           </button>
         }
       >
         {isLink ? (
           <>
-            Мы отправили ссылку для входа на <b className="text-ink">{email}</b>. Откройте её на этом устройстве, чтобы
-            продолжить.
+            {t.auth.linkSentTo} <b className="text-ink">{email}</b>. {t.auth.linkSentAfter}
           </>
         ) : (
           <>
-            Мы отправили письмо на <b className="text-ink">{email}</b>. Перейдите по ссылке из письма, чтобы завершить
-            регистрацию.
+            {t.auth.mailSentTo} <b className="text-ink">{email}</b>. {t.auth.mailSentAfter}
           </>
         )}
       </AuthOverlay>
@@ -243,9 +222,9 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
 
   const steps = [
     { label: "Email", on: emailOk },
-    ...(isLink ? [] : [{ label: "Пароль", on: passwordOk }]),
-    ...(isRegister ? [{ label: "Повтор", on: confirmOk }] : []),
-    { label: "Стол накрыт", on: ready },
+    ...(isLink ? [] : [{ label: t.auth.password, on: passwordOk }]),
+    ...(isRegister ? [{ label: t.auth.repeat, on: confirmOk }] : []),
+    { label: t.auth.tableReady, on: ready },
   ];
 
   return (
@@ -266,7 +245,7 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
       }
     >
       {!isLink && (
-        <div role="tablist" aria-label="Вход или регистрация" className="relative grid grid-cols-2 rounded-[14px] border border-line-strong bg-paper p-1">
+        <div role="tablist" aria-label={t.auth.tabsAria} className="relative grid grid-cols-2 rounded-[14px] border border-line-strong bg-paper p-1">
           <span
             aria-hidden="true"
             className="absolute left-1 top-1 h-10 w-[calc(50%-4px)] rounded-[10px] border border-[#4d2c36] bg-[#2e1c21] transition-transform duration-500 ease-[cubic-bezier(.3,1.3,.5,1)]"
@@ -281,7 +260,7 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
               onClick={() => switchMode(m)}
               className={`relative z-[1] h-10 text-sm font-semibold transition-colors duration-300 ${mode === m ? "text-ink" : "text-muted hover:text-ink"}`}
             >
-              {m === "login" ? "Вход" : "Регистрация"}
+              {m === "login" ? t.auth.tabLogin : t.auth.tabRegister}
             </button>
           ))}
         </div>
@@ -302,7 +281,7 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
         />
         {!isLink && (
           <PasswordField
-            label="Пароль"
+            label={t.auth.password}
             icon={<Lock className="h-[17px] w-[17px]" strokeWidth={2} />}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -313,15 +292,15 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
             hint={
               isRegister
                 ? passwordOk
-                  ? "Отлично"
-                  : `Минимум ${MIN_PASSWORD} символов${password.length ? ` · ещё ${MIN_PASSWORD - password.length}` : ""}`
+                  ? t.auth.great
+                  : t.auth.minChars(MIN_PASSWORD, MIN_PASSWORD - password.length)
                 : undefined
             }
           />
         )}
         {isRegister && (
           <PasswordField
-            label="Повторите пароль"
+            label={t.auth.repeatPassword}
             icon={<Lock className="h-[17px] w-[17px]" strokeWidth={2} />}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -329,7 +308,7 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
             minLength={MIN_PASSWORD}
             autoComplete="new-password"
             delay={180}
-            hint={confirmPassword && !confirmOk ? "Пароли пока не совпадают" : confirmOk ? "Совпадают" : undefined}
+            hint={confirmPassword && !confirmOk ? t.auth.notMatchingYet : confirmOk ? t.auth.matching : undefined}
           />
         )}
 
@@ -343,11 +322,11 @@ export function GuestAuthForm({ initialMode, initialEmail = "" }: { initialMode:
       <div className="flex flex-wrap items-center justify-between gap-3">
         {isLogin && (
           <a href="/account/forgot-password" className={AUTH_LINK}>
-            Забыли пароль?
+            {t.auth.forgot}
           </a>
         )}
         <button type="button" onClick={() => switchMode(isLink ? "login" : "link")} className={AUTH_LINK_MUTED}>
-          {isLink ? "← Войти с паролем" : "Войти по ссылке"}
+          {isLink ? t.auth.withPassword : t.auth.withLink}
         </button>
       </div>
     </AuthCard>

@@ -3,7 +3,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { STALE_RESERVATION_RETENTION_DAYS } from "@/lib/reservationCleanup";
-import { pluralize } from "@/lib/ru";
+import { getLang } from "@/lib/i18n/server";
+import { PRIVACY } from "@/lib/i18n/privacy";
+import { formatters } from "@/lib/i18n/format";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { EraseDataForm } from "@/components/guest/EraseDataForm";
 
 export const metadata: Metadata = {
@@ -36,99 +39,75 @@ function Item({ term, children }: { term: string; children: ReactNode }) {
   );
 }
 
-export default function PrivacyPage() {
-  const retention = `${STALE_RESERVATION_RETENTION_DAYS} ${pluralize(STALE_RESERVATION_RETENTION_DAYS, "день", "дня", "дней")}`;
+export default async function PrivacyPage() {
+  const lang = await getLang();
+  const t = PRIVACY[lang];
+  const retention = formatters(lang).count(STALE_RESERVATION_RETENTION_DAYS, t.days);
 
   return (
     <div className="relative flex-1 overflow-hidden">
       <div className="gp-lamp" aria-hidden="true" />
       <main className="relative mx-auto flex w-full max-w-[760px] flex-col gap-8 px-6 pb-16 pt-7">
-        <Link
-          href="/"
-          className="group inline-flex min-h-11 items-center gap-2 self-start text-[13px] text-[#c9b6ae] transition-colors hover:text-ink"
-        >
-          <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" strokeWidth={2} aria-hidden="true" />
-          К бронированию
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="group inline-flex min-h-11 items-center gap-2 text-[13px] text-[#c9b6ae] transition-colors hover:text-ink"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" strokeWidth={2} aria-hidden="true" />
+            {t.back}
+          </Link>
+          <LanguageSwitcher />
+        </div>
 
         <header className="flex flex-col gap-3">
           <p className="font-mono text-xs tracking-[0.28em] text-[#c9b6ae]">TABLEFLOW</p>
           <h1 className="text-balance font-display text-[40px] font-normal leading-[1.05] tracking-[-0.02em] text-ink sm:text-5xl">
-            Персональные данные
+            {t.title}
           </h1>
-          <p className="text-pretty text-[15px] leading-relaxed text-muted">
-            Что сохраняется, когда вы бронируете стол, зачем, кто это видит и как это удалить.
-          </p>
+          <p className="text-pretty text-[15px] leading-relaxed text-muted">{t.lead}</p>
           {OPERATOR_NAME && (
             <p className="text-[15px] text-muted">
-              Оператор персональных данных: <b className="font-semibold text-ink">{OPERATOR_NAME}</b>
+              {t.operator} <b className="font-semibold text-ink">{OPERATOR_NAME}</b>
             </p>
           )}
         </header>
 
-        <Section title="Какие данные сохраняются">
-          <p>При бронировании в базе данных сохраняется запись о брони:</p>
+        <Section title={t.stored.title}>
+          <p>{t.stored.intro}</p>
           <ul className="flex list-disc flex-col gap-1.5 pl-5">
-            <Item term="Имя">как вы его указали в форме;</Item>
-            <Item term="Телефон и/или email">хотя бы одно из двух, чтобы с вами можно было связаться;</Item>
-            <Item term="Бронь">число гостей, дата, время и продолжительность визита, выбранный стол;</Item>
-            <Item term="Статус брони">ожидает, подтверждена, завершена, отменена или неявка;</Item>
-            <Item term="Причина отмены">если бронь отменили, и кто её отменил — вы или ресторан;</Item>
-            <Item term="Момент согласия">дата и время, когда вы отметили согласие на обработку данных.</Item>
+            {t.stored.items.map(([term, text]) => (
+              <Item key={term} term={term}>
+                {text}
+              </Item>
+            ))}
           </ul>
-          <p>
-            Аккаунт не обязателен. Если вы бронируете, войдя в аккаунт, бронь привязывается к нему, а имя и телефон из
-            формы сохраняются в профиле аккаунта, чтобы подставить их в следующий раз.
-          </p>
-          <p>
-            Чтобы ограничить частоту запросов к бронированию, сервер считает обращения с одного IP-адреса. Сам адрес не
-            хранится — только его необратимый хэш, и не дольше суток.
-          </p>
+          <p>{t.stored.account}</p>
+          <p>{t.stored.ip}</p>
         </Section>
 
-        <Section title="Зачем">
-          <p>
-            Только для обработки брони: чтобы держать за вами стол, подтвердить или отменить бронь и связаться с вами
-            по ней.
-          </p>
+        <Section title={t.why.title}>
+          <p>{t.why.text}</p>
         </Section>
 
-        <Section title="Кто имеет доступ">
-          <p>
-            Сотрудники ресторана, которым выдан доступ к панели персонала (роль «персонал»): они видят список броней с
-            именем и контактами, чтобы встречать гостей и связываться с ними. Если вы вошли в аккаунт, свои брони видите
-            и вы.
-          </p>
-          <p>
-            В журнал действий персонала попадают только номера броней и названия изменённых полей — без имени,
-            телефона и email.
-          </p>
+        <Section title={t.access.title}>
+          <p>{t.access.staff}</p>
+          <p>{t.access.journal}</p>
         </Section>
 
-        <Section title="Сколько хранятся">
-          <p>
-            Бронь, время которой прошло, автоматически закрывается. Закрытые брони — завершённые, отменённые и неявки —
-            удаляются, когда с даты визита прошло больше {retention}.
-          </p>
+        <Section title={t.retention.title}>
+          <p>{t.retention.text(retention)}</p>
         </Section>
 
-        <Section title="Как удалить свои данные">
-          <p>
-            Укажите email или телефон, с которым бронировали. Во всех завершённых, отменённых и уже прошедших бронях с
-            этим контактом имя заменится на «Удалено по запросу гостя», телефон и email сотрутся, бронь отвяжется от
-            аккаунта. Дата, время и число гостей останутся без связи с вами.
-          </p>
-          <p>
-            Предстоящие брони так не удаляются, чтобы никто не мог снять чужую бронь: сначала отмените её — в аккаунте
-            или обратившись в ресторан.
-          </p>
+        <Section title={t.erase.title}>
+          <p>{t.erase.how}</p>
+          <p>{t.erase.upcoming}</p>
           <EraseDataForm />
           <p>
-            Форма не удаляет аккаунт и сохранённые в его профиле имя и телефон.
+            {t.erase.notAccount}
             {PRIVACY_CONTACT && (
               <>
                 {" "}
-                По этому и другим вопросам о персональных данных: <b className="font-semibold text-ink">{PRIVACY_CONTACT}</b>.
+                {t.erase.contact} <b className="font-semibold text-ink">{PRIVACY_CONTACT}</b>.
               </>
             )}
           </p>

@@ -1,4 +1,7 @@
+"use client";
+
 import { Check } from "lucide-react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 const CHAIRS = [0, 90, 180, 270].map((angle, i) => ({ angle, enter: 150 + i * 120, lag: i * 70 }));
 
@@ -24,6 +27,7 @@ export function SetTableScene({
   caption: string;
   steps: { label: string; on: boolean }[];
 }) {
+  const { t } = useI18n();
   return (
     <div className="relative flex min-h-[340px] flex-col items-center justify-center gap-[26px] border-b border-[#2c2220] bg-[#17110f] bg-[radial-gradient(#2a201d_1px,transparent_1px)] bg-[length:18px_18px] px-6 py-9 md:border-b-0 md:border-r">
       <div className={`ga-scene max-[380px]:scale-90 ${ready ? "out" : ""} ${done ? "done" : ""}`} aria-hidden="true">
@@ -46,7 +50,7 @@ export function SetTableScene({
       <div key={caption} className="min-h-[30px] animate-[gp-up_.5s_both] text-center font-display text-[22px] italic text-[#e6d8d2]" aria-live="polite">
         {caption}
       </div>
-      <ul className="flex flex-wrap justify-center gap-[18px] text-xs text-[#8f7c75]" aria-label="Готовность формы">
+      <ul className="flex flex-wrap justify-center gap-[18px] text-xs text-[#8f7c75]" aria-label={t.auth.formReady}>
         {steps.map((s) => (
           <li key={s.label} className={`ga-step inline-flex items-center gap-[7px] transition-colors duration-400 ${s.on ? "on text-ink" : ""}`}>
             <i
@@ -57,7 +61,7 @@ export function SetTableScene({
               <Check className="h-2.5 w-2.5" strokeWidth={3.5} aria-hidden="true" />
             </i>
             {s.label}
-            <span className="sr-only">{s.on ? " — готово" : " — не заполнено"}</span>
+            <span className="sr-only">{` — ${s.on ? t.auth.done : t.auth.notFilled}`}</span>
           </li>
         ))}
       </ul>

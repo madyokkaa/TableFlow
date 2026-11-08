@@ -7,9 +7,10 @@ import type { Session } from "@supabase/supabase-js";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { apiFetch, parseError } from "@/lib/api";
-import { formatDateTime, guestsLabel } from "@/lib/ru";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { restaurantTodayIso } from "@/lib/scheduling";
-import { STATUS_LABELS_RU, type ReservationStatus } from "@/lib/reservations";
+import type { ReservationStatus } from "@/lib/reservations";
 import { BookingTicket, type TicketReservation } from "@/components/guest/BookingTicket";
 import type { Hall } from "@/components/hostess/HallForm";
 import type { DiningTable } from "@/components/hostess/TableForm";
@@ -58,15 +59,16 @@ function EmptyTable() {
 }
 
 function HistoryItem({ reservation, index }: { reservation: MyReservation; index: number }) {
+  const { t, f, guests } = useI18n();
   const ticket = toTicket(reservation);
   // The host's own reason for rejecting a booking is internal - a guest only
   // ever sees that the restaurant cancelled it, never why.
   const note =
     reservation.status === "cancelled"
       ? reservation.cancelled_by === "host"
-        ? "Отменено рестораном"
+        ? t.account.cancelledByRestaurant
         : reservation.cancellation_reason
-          ? `Вы: ${reservation.cancellation_reason.charAt(0).toLowerCase()}${reservation.cancellation_reason.slice(1)}`
+          ? t.account.you(t.reasons[reservation.cancellation_reason] ?? reservation.cancellation_reason)
           : null
       : null;
   const done = reservation.status === "completed";
@@ -76,7 +78,7 @@ function HistoryItem({ reservation, index }: { reservation: MyReservation; index
       : done
         ? "bg-status-confirmed-tint text-status-confirmed"
         : "bg-status-noshow-tint text-status-noshow";
-  const label = done ? "Состоялась" : (STATUS_LABELS_RU[reservation.status] ?? reservation.status);
+  const label = done ? t.account.happened : (t.status[reservation.status] ?? reservation.status);
   return (
     <li
       className={`relative grid animate-[gp-slide-in_.55s_cubic-bezier(.2,.9,.3,1.15)_both] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-line bg-surface px-[18px] py-4 transition-[transform,border-color] duration-300 ease-[cubic-bezier(0.3,1.4,0.5,1)] hover:translate-x-1 hover:border-[#4a3833] before:absolute before:-left-[26px] before:top-1/2 before:-mt-1.5 before:h-3 before:w-3 before:rounded-full before:border-2 before:bg-paper ${
@@ -89,10 +91,13 @@ function HistoryItem({ reservation, index }: { reservation: MyReservation; index
       style={{ animationDelay: `${index * 80}ms` }}
     >
       <div className="min-w-0">
-        <div className="font-mono text-sm font-medium capitalize">{formatDateTime(reservation.date, reservation.start_time)}</div>
+        <div className="font-mono text-sm font-medium capitalize">{f.dateTime(reservation.date, reservation.start_time)}</div>
         <div className="mt-[3px] text-xs text-muted">
-          {ticket.hallName || "Зал"} · {ticket.tableLabels.length > 1 ? "столы" : "стол"} {ticket.tableLabels.join(", ") || "—"} ·{" "}
-          {guestsLabel(reservation.party_size)}
+          {ticket.hallName || t.common.hall} ·{" "}
+          {ticket.tableLabels.length > 1
+            ? t.common.tablesLower(ticket.tableLabels.join(", "))
+            : t.common.tableLower(ticket.tableLabels[0] ?? "—")}{" "}
+          · {guests(reservation.party_size)}
         </div>
         {note && <div className="mt-1 text-xs text-status-cancelled">{note}</div>}
       </div>
@@ -105,14 +110,15 @@ function HistoryItem({ reservation, index }: { reservation: MyReservation; index
 }
 
 function AccountContent({ session }: { session: Session }) {
+  const { t } = useI18n();
   const [reservations, setReservations] = useState<MyReservation[] | null>(null);
   const [halls, setHalls] = useState<Hall[]>([]);
   const [tables, setTables] = useState<DiningTable[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState<"upcoming" | "history">("upcoming");
 
   const load = useCallback(async () => {
-    setLoadError(null);
+    setLoadError(false);
     const supabase = createBrowserSupabaseClient();
     // RLS already scopes this to the signed-in guest's own rows - no API
     // route needed just to read them back.
@@ -125,7 +131,7 @@ function AccountContent({ session }: { session: Session }) {
       .order("date", { ascending: false })
       .order("start_time", { ascending: false });
     if (error) {
-      setLoadError("Не удалось загрузить брони. Попробуйте обновить страницу.");
+      setLoadError(true);
       setReservations([]);
       return;
     }
@@ -162,9 +168,9 @@ function AccountContent({ session }: { session: Session }) {
   if (loadError) {
     return (
       <p className="rounded-xl border border-status-cancelled/40 bg-status-cancelled-tint px-4 py-8 text-center text-sm text-status-cancelled">
-        {loadError}{" "}
+        {t.account.loadError}{" "}
         <button type="button" onClick={load} className="underline underline-offset-4">
-          Повторить
+          {t.common.retry}
         </button>
       </p>
     );
@@ -179,7 +185,7 @@ function AccountContent({ session }: { session: Session }) {
 
   return (
     <div className="flex flex-col gap-[30px]">
-      <div role="tablist" aria-label="Брони" className="relative inline-flex self-start rounded-[14px] border border-line-strong bg-[#1a1311] p-1">
+      <div role="tablist" aria-label={t.account.tabsAria} className="relative inline-flex self-start rounded-[14px] border border-line-strong bg-[#1a1311] p-1">
         <span
           aria-hidden="true"
           className="absolute left-1 top-1 h-[42px] rounded-[10px] bg-claret transition-transform duration-500 ease-[cubic-bezier(0.3,1.3,0.5,1)]"
@@ -187,8 +193,8 @@ function AccountContent({ session }: { session: Session }) {
         />
         {(
           [
-            ["upcoming", "Предстоящие", upcoming.length],
-            ["history", "История", history.length],
+            ["upcoming", t.account.upcoming, upcoming.length],
+            ["history", t.account.history, history.length],
           ] as const
         ).map(([value, label, count]) => (
           <button
@@ -212,13 +218,13 @@ function AccountContent({ session }: { session: Session }) {
         upcoming.length === 0 ? (
           <div className="flex animate-[gp-up_.6s_both] flex-col items-center gap-4 rounded-[26px] border border-dashed border-line-strong px-6 py-10 text-center">
             <EmptyTable />
-            <div className="font-display text-2xl">Стол пока свободен</div>
-            <p className="max-w-[320px] text-sm text-muted">Предстоящих броней нет. Выберите стол на схеме — займёт меньше минуты.</p>
+            <div className="font-display text-2xl">{t.account.emptyTitle}</div>
+            <p className="max-w-[320px] text-sm text-muted">{t.account.emptyText}</p>
             <Link
               href="/"
               className="inline-flex h-11 items-center gap-2 rounded-[13px] bg-claret px-[18px] text-sm font-bold text-on-accent transition-[transform,box-shadow] duration-200 hover:-translate-y-px hover:shadow-[0_14px_30px_-14px_var(--color-claret)]"
             >
-              Забронировать столик
+              {t.common.bookTable}
               <ArrowRight className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
             </Link>
           </div>
@@ -240,7 +246,7 @@ function AccountContent({ session }: { session: Session }) {
         )
       ) : history.length === 0 ? (
         <p className="rounded-[18px] border border-dashed border-line-strong px-4 py-8 text-center text-sm text-muted">
-          Здесь появятся прошедшие и отменённые брони.
+          {t.account.historyEmpty}
         </p>
       ) : (
         <ol className="relative flex flex-col gap-3 pl-7 before:absolute before:bottom-2.5 before:left-2 before:top-2.5 before:w-0.5 before:origin-top before:animate-[gp-line_1s_cubic-bezier(.6,0,.2,1)_both] before:rounded-sm before:bg-line">
@@ -254,6 +260,7 @@ function AccountContent({ session }: { session: Session }) {
 }
 
 export default function AccountPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
@@ -285,15 +292,16 @@ export default function AccountPage() {
         aria-hidden="true"
       />
       <main className="relative mx-auto flex w-full max-w-[760px] flex-col gap-[30px] px-6 pb-[72px] pt-7">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="font-mono text-xs tracking-[0.28em] text-[#c9b6ae]">TABLEFLOW</span>
+          <LanguageSwitcher className="ml-auto" />
           <Link href="/" className="group inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-claret hover:text-claret-strong">
             <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" strokeWidth={2} aria-hidden="true" />
-            Забронировать ещё
+            {t.account.bookMore}
           </Link>
         </div>
         <h1 className="animate-[gp-up_.7s_both] font-display text-[clamp(40px,6vw,58px)] font-normal leading-none tracking-[-0.02em]">
-          Мои <em className="not-italic text-claret">брони</em>
+          {t.account.titleBefore} <em className="not-italic text-claret">{t.account.titleEm}</em>
         </h1>
 
         {session === undefined ? (
