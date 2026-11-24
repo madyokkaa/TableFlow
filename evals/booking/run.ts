@@ -264,7 +264,7 @@ async function main() {
     rows.push(await runExample(ex));
     console.log("ok");
     // Free Groq plan: 8000 tokens/min; pause so the limit does not turn calls into empty answers.
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 13000));
   }
 
   const usedModel = llmModel();
