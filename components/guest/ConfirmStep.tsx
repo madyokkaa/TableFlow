@@ -1,0 +1,151 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { motion } from "motion/react";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import { formatPhoneInput } from "@/lib/phone";
+import { isValidEmail } from "@/lib/validation";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
+import type { DiningTable } from "@/components/hostess/TableForm";
+
+export function ConfirmStep({
+  table,
+  date,
+  time,
+  partySize,
+  submitting,
+  error,
+  onSubmit,
+  defaultName = "",
+  defaultPhone = "",
+  defaultEmail = "",
+}: {
+  table: DiningTable;
+  date: string;
+  time: string;
+  partySize: number;
+  submitting: boolean;
+  error: string | null;
+  onSubmit: (fields: { name: string; phone: string; email: string; consentPd: true }) => void;
+  defaultName?: string;
+  defaultPhone?: string;
+  defaultEmail?: string;
+}) {
+  const { t, f, guests } = useI18n();
+  const [name, setName] = useState(defaultName);
+  const [phone, setPhone] = useState(() => formatPhoneInput(defaultPhone));
+  const [email, setEmail] = useState(defaultEmail);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [consent, setConsent] = useState(false);
+
+  const hasContact = phone.trim().length > 0 || email.trim().length > 0;
+  const emailValid = email.trim().length === 0 || isValidEmail(email);
+  const canSubmit = name.trim().length > 0 && hasContact && emailValid && consent && !submitting;
+  const prefilled = Boolean(defaultName || defaultPhone || defaultEmail);
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setEmailTouched(true);
+    if (!canSubmit) return;
+    onSubmit({ name: name.trim(), phone: phone.trim(), email: email.trim(), consentPd: true });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <div className="border-b border-line pb-4">
+        <p className="text-xs uppercase tracking-[0.14em] text-muted">{t.confirm.yourTable}</p>
+        <p className="mt-1 font-mono text-lg font-medium tabular-nums capitalize">{f.dateTime(date, time)}</p>
+        <p className="text-sm text-muted">
+          {t.confirm.tableGuests(table.label, guests(partySize))}
+        </p>
+      </div>
+
+      {prefilled && (
+        <p className="-mb-1 text-xs text-muted">{t.confirm.prefilled}</p>
+      )}
+
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium text-ink">{t.confirm.name}</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          maxLength={120}
+          autoComplete="name"
+          className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
+          placeholder={t.confirm.namePlaceholder}
+        />
+      </label>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-ink">{t.confirm.phone}</span>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
+            type="tel"
+            inputMode="tel"
+            maxLength={18}
+            autoComplete="tel"
+            className="rounded-lg border border-line bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret"
+            placeholder="+7 (900) 000-00-00"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-ink">{t.confirm.email}</span>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setEmailTouched(true)}
+            type="email"
+            maxLength={255}
+            autoComplete="email"
+            className={`rounded-lg border bg-paper px-3 py-2 text-ink outline-none transition-colors focus:border-claret ${
+              emailTouched && !emailValid ? "border-status-cancelled" : "border-line"
+            }`}
+            placeholder="ivan@example.com"
+          />
+        </label>
+      </div>
+      {emailTouched && !emailValid && <p className="-mt-2 text-xs text-status-cancelled">{t.confirm.emailInvalid}</p>}
+      {!hasContact && (
+        <p className="-mt-2 text-xs text-muted">{t.confirm.needContact}</p>
+      )}
+
+      <label className="flex items-start gap-2.5 text-sm">
+        <input
+          type="checkbox"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+          required
+          className="mt-0.5 h-4 w-4 shrink-0 accent-claret"
+        />
+        <span className="text-ink">
+          {t.confirm.consent}{" "}
+          <Link
+            href="/privacy"
+            target="_blank"
+            rel="noopener"
+            className="text-claret underline decoration-claret/40 underline-offset-4 transition-colors hover:text-claret-strong"
+          >
+            {t.confirm.consentMore}
+          </Link>
+        </span>
+      </label>
+
+      {error && <p className="rounded-lg bg-status-cancelled-tint px-3 py-2 text-sm text-status-cancelled">{error}</p>}
+
+      <motion.button
+        type="submit"
+        disabled={!canSubmit}
+        whileHover={canSubmit ? { scale: 1.02 } : undefined}
+        whileTap={canSubmit ? { scale: 0.97 } : undefined}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className="inline-flex h-11 items-center justify-center rounded-lg bg-claret px-5 text-sm font-medium text-on-accent transition-colors duration-150 ease-out hover:bg-claret-strong disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {submitting ? <LoadingIndicator label={t.confirm.submitting} /> : t.confirm.submit}
+      </motion.button>
+    </form>
+  );
+}
